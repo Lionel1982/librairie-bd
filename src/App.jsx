@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.13.0-supabase";
+const APP_VERSION = "3.14.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
