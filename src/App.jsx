@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.8.0-supabase";
+const APP_VERSION = "3.9.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -213,6 +213,8 @@ function LibraryApp({ user }) {
               <button className="hdr-menu-item" onClick={() => { setSettingsOpen(true); close(); }}>⚙️ Paramètres</button>
               <div className="hdr-menu-sep" />
               <button className="hdr-menu-item" onClick={() => { logout(); close(); }}>🚪 Se déconnecter</button>
+              <div className="hdr-menu-sep" />
+              <div className="hdr-menu-version">version {APP_VERSION}</div>
             </>)}
           </Menu>
           <h1 className="logo">📚 Ma Bibliothèque BD</h1>

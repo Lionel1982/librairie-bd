@@ -101,22 +101,17 @@ export function useLibrary(userId) {
   // Supprime les entrées parasites (lignes d'exemple/template importées par erreur :
   // "Serie — T.TypeObjet — Descriptif", "Revue — T.Num — Titre", "Largeur / Profondeur"...).
   const cleanupJunk = useCallback(async () => {
-    // ULTRA-STRICT : on supprime UNIQUEMENT les entrées sans AUCUNE information.
-    // Une entrée est supprimée seulement si TOUS ces champs sont vides/absents :
-    // titre (ou titre générique "ISBN ..."), série, auteur, éditeur, ISBN ET couverture.
+    // Règle : supprime une entrée si elle n\u2019a NI titre réel NI ISBN (déchet inexploitable).
     let targets = [];
     setBooks(bs => {
       targets = bs.filter(b => {
         const titre = (b.titre || "").trim();
         const titreReel = titre && !/^ISBN\s/i.test(titre); // "ISBN 978..." ne compte pas comme un vrai titre
-        const serie = (b.serie || "").trim();
-        const auteur = (b.auteur || "").trim();
-        const editeur = (b.editeur || "").trim();
         const isbnClean = String(b.isbn || "").replace(/[^0-9Xx]/g, "");
         const hasIsbn = isbnClean.length >= 10;
-        const cover = (b.cover || "").trim();
-        // supprimée SEULEMENT si rien du tout
-        return !titreReel && !serie && !auteur && !editeur && !hasIsbn && !cover;
+        // Règle : une BD est un déchet si elle n'a NI titre réel NI ISBN
+        // (la couverture/série/auteur seuls ne suffisent pas à l'identifier).
+        return !titreReel && !hasIsbn;
       });
       return bs;
     });

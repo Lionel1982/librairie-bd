@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { OWNED, STATUS_LABELS, amazonUrl, cleanIsbn, extractTome } from "../lib/store.js";
 import { lookupByISBN, lookupByISBNRemote, searchCandidates } from "../lib/api.js";
+import CoverPicker from "./CoverPicker.jsx";
 
 const EMPTY = { titre: "", serie: "", tome: "", auteur: "", editeur: "", annee: "", isbn: "", statut: "jai", note: 0, commentaire: "", cover: "" };
 
@@ -9,6 +10,7 @@ export default function BookModal({ id, books, refCatalog, onSave, onDelete, onC
   const [f, setF] = useState(editing ? { ...EMPTY, ...editing } : EMPTY);
   const [sugg, setSugg] = useState([]);   // propositions par champ
   const [msg, setMsg] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
 
   async function reconcile() {
@@ -38,7 +40,9 @@ export default function BookModal({ id, books, refCatalog, onSave, onDelete, onC
   function applyAll() { sugg.forEach(p => set(p.field, p.value)); setSugg([]); }
 
   function save() {
-    if (!f.titre.trim()) { setMsg("⚠️ Titre obligatoire"); return; }
+    const hasTitre = f.titre && f.titre.trim();
+    const hasIsbn = String(f.isbn || "").replace(/[^0-9Xx]/g, "").length >= 10;
+    if (!hasTitre && !hasIsbn) { setMsg("⚠️ Titre OU ISBN obligatoire"); return; }
     const data = { ...f, tome: f.tome !== "" ? Number(f.tome) : "", annee: f.annee !== "" ? Number(f.annee) : "", note: Number(f.note) || 0 };
     onSave(data, id || null);
   }
@@ -62,7 +66,7 @@ export default function BookModal({ id, books, refCatalog, onSave, onDelete, onC
         <div className="modal-body">
           {msg && <div className="reconcile-bar"><span>{msg}</span>{sugg.length > 0 && <button className="btn btn-primary" onClick={applyAll}>✓ Tout appliquer</button>}</div>}
           <div className="cover-upload">
-            <div className="cover-preview">{f.cover ? <img src={f.cover} alt="" /> : <span className="cover-placeholder">🖼️<br />Aperçu</span>}</div>
+            <div className="cover-preview cover-preview-click" title="Changer la couverture" onClick={() => setPickerOpen(true)}>{f.cover ? <img src={f.cover} alt="" /> : <span className="cover-placeholder">🖼️<br />Choisir</span>}<span className="cover-edit-badge">🖼️ Changer</span></div>
             <div className="cover-inputs"><label>Couverture (URL)</label><input type="text" value={f.cover} onChange={e => set("cover", e.target.value)} placeholder="https://..." /></div>
           </div>
           <div className="form-grid">
@@ -82,16 +86,21 @@ export default function BookModal({ id, books, refCatalog, onSave, onDelete, onC
             <div className="form-field span-2"><label>Notes</label><textarea rows="2" value={f.commentaire} onChange={e => set("commentaire", e.target.value)} /></div>
           </div>
         </div>
-        <div className="modal-footer">
-          {id && <button className="btn btn-danger" onClick={() => onDelete(id)}>🗑️ Supprimer</button>}
-          <div className="footer-right">
+        <div className="modal-footer modal-footer-col">
+          <button className="btn btn-primary modal-save-top" onClick={save}>💾 Enregistrer</button>
+          <div className="footer-secondary">
             <button className="btn btn-ghost" onClick={reconcile}>🔎 Compléter les infos</button>
             {id && !OWNED.includes(f.statut) && <button className="btn btn-ghost" onClick={() => window.open(amazonUrl(f), "_blank")}>🛒 Amazon</button>}
             <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
-            <button className="btn btn-primary" onClick={save}>💾 Enregistrer</button>
+            {id && <button className="btn btn-danger" onClick={() => onDelete(id)}>🗑️ Supprimer</button>}
           </div>
         </div>
       </div>
+      {pickerOpen && (
+        <CoverPicker isbn={f.isbn} titre={f.titre} serie={f.serie}
+          onPick={(url) => { set("cover", url); setPickerOpen(false); }}
+          onClose={() => setPickerOpen(false)} />
+      )}
     </div>
   );
 }

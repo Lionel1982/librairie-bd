@@ -465,7 +465,7 @@ select:focus { outline: none; border-color: var(--accent); }
 .suggest-isbn { font-size: 11px; color: var(--text-dim); opacity: .7; }
 
 /* Badge version */
-.app-version { display:inline-block; margin-top:6px; font-size:11px; color:var(--text-dim); opacity:.6; }
+
 
 
 /* ============ Compteur Trier + à confirmer ============ */
@@ -979,14 +979,7 @@ select:focus { outline: none; border-color: var(--accent); }
 }
 
 
-/* ===== Badge version visible en haut à droite (vérif redéploiement) ===== */
-.app-version {
-  position: fixed; top: 6px; right: 8px; z-index: 500;
-  display: inline-block; font-size: 11px; font-weight: 700;
-  color: #fff; background: rgba(124,92,255,.9);
-  padding: 3px 8px; border-radius: 999px; pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0,0,0,.4);
-}
+
 
 
 /* ===== Champ de recherche flottant dans la bibliothèque (4e bouton) ===== */
@@ -1010,3 +1003,34 @@ select:focus { outline: none; border-color: var(--accent); }
   display: flex; align-items: center; justify-content: center;
 }
 .floating-filter-close:hover { background: #ff5c7c; color: #fff; }
+
+
+/* ===== Version dans le burger + fiche BD (v3.9.0) ===== */
+.hdr-menu-version { padding: 8px 12px 4px; font-size: 11px; color: var(--text-dim, #9a9ab0); text-align: center; opacity: .7; }
+
+/* Aperçu couverture cliquable dans la fiche */
+.cover-preview-click { position: relative; cursor: pointer; }
+.cover-preview-click .cover-edit-badge {
+  position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  background: rgba(124,92,255,.92); color: #fff; font-size: 11px; font-weight: 600;
+  padding: 3px 8px; border-radius: 999px; white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity .15s;
+}
+.cover-preview-click:hover .cover-edit-badge { opacity: 1; }
+.cover-preview-click:hover { outline: 2px solid #7c5cff; outline-offset: 2px; }
+
+/* Fiche BD : footer en colonne, Enregistrer en haut, pleine largeur */
+.modal-footer-col { flex-direction: column !important; gap: 10px; align-items: stretch !important; }
+.modal-save-top { width: 100%; padding: 14px; font-size: 16px; }
+.footer-secondary { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.footer-secondary .btn { flex: 1; min-width: 120px; }
+
+/* Sélecteur de couvertures */
+.cover-picker-status { font-size: 14px; color: var(--text-dim, #9a9ab0); margin-bottom: 12px; }
+.cover-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+.cover-cand { background: var(--surface-2, #1a1a24); border: 1px solid var(--border, #2a2a3a); border-radius: 10px; padding: 4px; cursor: pointer; aspect-ratio: 2/3; overflow: hidden; }
+.cover-cand:hover { border-color: #7c5cff; outline: 2px solid #7c5cff; }
+.cover-cand img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; display: block; }
+.cover-picker-manual { margin-top: 16px; }
+.cover-picker-manual label { display: block; font-size: 13px; color: var(--text-dim, #9a9ab0); margin-bottom: 6px; }
+.cover-picker-manual input { flex: 1; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--border, #2a2a3a); background: var(--surface-2, #1a1a24); color: var(--text, #e8e8f0); font-size: 14px; }
