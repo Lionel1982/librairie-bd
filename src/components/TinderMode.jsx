@@ -40,7 +40,12 @@ export default function TinderMode({ books, refCatalog, onCommit, onAddMany, onC
   if (!queue.length) return (
     <div className="tinder-overlay">
       <div className="tinder-top"><span className="tinder-counter" /><button className="modal-close" onClick={onClose}>✕</button></div>
-      <div className="tinder-stack"><div className="tinder-done">🎉<br />Aucune BD à confirmer</div></div>
+      <div className="tinder-empty">
+        <div className="tinder-empty-icon">🎉</div>
+        <div className="tinder-empty-title">Tout est trié !</div>
+        <div className="tinder-empty-sub">Aucune BD en attente de tri.<br />Scanne ou cherche des albums pour en ajouter à trancher.</div>
+        <button className="btn btn-primary tinder-empty-btn" onClick={onClose}>Fermer</button>
+      </div>
     </div>
   );
 

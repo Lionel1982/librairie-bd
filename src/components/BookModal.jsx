@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { OWNED, STATUS_LABELS, amazonUrl, cleanIsbn, extractTome } from "../lib/store.js";
-import { lookupByISBN, searchCandidates } from "../lib/api.js";
+import { lookupByISBN, lookupByISBNRemote, searchCandidates } from "../lib/api.js";
 
 const EMPTY = { titre: "", serie: "", tome: "", auteur: "", editeur: "", annee: "", isbn: "", statut: "jai", note: 0, commentaire: "", cover: "" };
 
@@ -15,7 +15,9 @@ export default function BookModal({ id, books, refCatalog, onSave, onDelete, onC
     setMsg("🔎 Recherche…");
     const isbn = cleanIsbn(f.isbn);
     if (isbn.length === 10 || isbn.length === 13) {
-      const info = await lookupByISBN(isbn);
+      let info = await lookupByISBNRemote(isbn);
+      if (!info || !info.titre) { try { const web = await lookupByISBN(isbn); if (web && web.titre) info = web; else info = info || web || {}; } catch { info = info || {}; } }
+      info = info || {};
       const props = [];
       ["titre","auteur","editeur","annee","cover"].forEach(k => { if (info[k] && String(info[k]) !== String(f[k])) props.push({ field: k, value: info[k] }); });
       setSugg(props); setMsg(props.length ? props.length + " proposition(s) (ISBN)" : "✅ Rien à changer"); return;

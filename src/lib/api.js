@@ -187,3 +187,22 @@ export function parseCSV(text, sep = ";") {
   if (field.length || row.length) { row.push(field); rows.push(row); }
   return rows;
 }
+
+
+// Résout un ISBN via la fonction serverless /api/isbn (multi-sources côté serveur :
+// Google Books + OpenLibrary + libraires FR). Évite les limites CORS/BD-FR du client.
+// Renvoie { titre, auteur, editeur, annee, cover, found } ou null si échec réseau.
+export async function lookupByISBNRemote(isbnRaw) {
+  const isbn = cleanIsbn(isbnRaw);
+  if (!isbn) return null;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 9000);
+    const r = await fetch("/api/isbn?isbn=" + encodeURIComponent(isbn), { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (!j) return null;
+    return { titre: j.titre || "", auteur: j.auteur || "", editeur: j.editeur || "", annee: j.annee || "", cover: j.cover || "", isbn: j.isbn || isbn, found: !!j.found };
+  } catch { return null; }
+}

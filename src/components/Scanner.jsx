@@ -1,12 +1,12 @@
 import React, { useRef, useState, useEffect } from "react";
 import { createScanEngine, isValidBookEAN } from "../lib/scanner.js";
-import { lookupByISBN } from "../lib/api.js";
-import { cleanIsbn, isbnVariants } from "../lib/store.js";
+import { lookupByISBN, lookupByISBNRemote } from "../lib/api.js";
+import { cleanIsbn, isbnVariants, lookupInCatalog } from "../lib/store.js";
 
 // Scanner code-barre — mode "scan en lot puis complétion".
 // On accumule les ISBN scannés (fluide, pas de lookup pendant le scan),
 // puis on complète les infos en lot à la validation.
-export default function Scanner({ onAddMany, onClose }) {
+export default function Scanner({ onAddMany, refCatalog = [], onClose }) {
   const videoRef = useRef(null);
   const engineRef = useRef(null);
   const [status, setStatus] = useState("Initialisation de la caméra…");
@@ -63,8 +63,9 @@ export default function Scanner({ onAddMany, onClose }) {
     for (let i = 0; i < list.length; i++) {
       const isbn = list[i];
       setProgress("Complétion " + (i + 1) + "/" + list.length + " — " + isbn + "…");
-      let info = {};
-      try { info = await lookupByISBN(isbn); } catch {}
+      let info = lookupInCatalog(refCatalog, isbn) || {};   // 1) catalogue BDGest local (instantané, BD FR)
+      if (!info.titre) { try { const r = await lookupByISBNRemote(isbn); if (r && r.titre) info = r; else if (r && r.cover && !info.cover) info = { ...info, cover: r.cover }; } catch {} } // 2) /api/isbn (serveur multi-sources, BD FR)
+      if (!info.titre) { try { const web = await lookupByISBN(isbn); if (web && web.titre) info = web; } catch {} } // 3) API client direct (dernier secours)
       const variants = isbnVariants(isbn);
       const cover = info.cover || (variants[0] ? "https://covers.openlibrary.org/b/isbn/" + (variants.find(v => v.length === 13) || variants[0]) + "-L.jpg" : "");
       books.push({

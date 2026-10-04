@@ -99,3 +99,27 @@ export function blacklistAlbum(bl, a) {
 }
 export function unblacklistSerie(bl, key) { return { ...bl, series: bl.series.filter(s => s.key !== key) }; }
 export function unblacklistAlbum(bl, key) { return { ...bl, albums: bl.albums.filter(x => x.key !== key) }; }
+
+
+// Cherche un album dans le catalogue de référence local (BDGest) par ISBN.
+// Instantané, pas d'API — couvre les BD FR absentes de Google Books/OpenLibrary.
+export function lookupInCatalog(refCatalog, isbnRaw) {
+  const variants = isbnVariants(cleanIsbn(isbnRaw));
+  if (!variants.length) return null;
+  const vset = new Set(variants);
+  const hit = (refCatalog || []).find(c => {
+    const ci = cleanIsbn(c.isbn || "");
+    if (!ci) return false;
+    return isbnVariants(ci).some(v => vset.has(v));
+  });
+  if (!hit) return null;
+  const serie = hit.serie || "";
+  const t = hit.titre || "";
+  const titre = (serie && hit.tome && t) ? (serie + " — T." + hit.tome + " — " + t)
+              : (serie && t) ? (serie + " — " + t) : (t || serie);
+  return {
+    titre: titre || ("ISBN " + variants[0]), serie, tome: hit.tome ?? "",
+    auteur: hit.auteur || "", editeur: hit.editeur || "", annee: hit.annee || "",
+    isbn: hit.isbn || variants[0], cover: hit.cover || "",
+  };
+}

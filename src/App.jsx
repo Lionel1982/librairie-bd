@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.1.0-supabase";
+const APP_VERSION = "3.2.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -271,7 +271,7 @@ function LibraryApp({ user }) {
           onAddWish={addGapWish} onBlacklistSerie={blSerie} onBlacklistAlbum={blAlbum} onClose={() => setPlanOpen(false)} />
       )}
       {scanOpen && (
-        <Scanner onAddMany={addScannedMany} onClose={() => setScanOpen(false)} />
+        <Scanner onAddMany={addScannedMany} refCatalog={refCatalog} onClose={() => setScanOpen(false)} />
       )}
       {settingsOpen && (
         <SettingsModal blacklist={blacklist}

@@ -877,3 +877,11 @@ select:focus { outline: none; border-color: var(--accent); }
   .hdr-menu-panel { min-width: 240px; }
   .hdr-menu-item { padding: 14px 14px; font-size: 15px; }
 }
+
+
+/* ===== Écran "rien à trier" (Tinder vide) ===== */
+.tinder-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 24px; }
+.tinder-empty-icon { font-size: 64px; }
+.tinder-empty-title { font-size: 24px; font-weight: 700; color: var(--text, #e8e8f0); }
+.tinder-empty-sub { font-size: 15px; color: var(--text-dim, #9a9ab0); line-height: 1.5; }
+.tinder-empty-btn { margin-top: 10px; padding: 14px 32px; font-size: 16px; }
