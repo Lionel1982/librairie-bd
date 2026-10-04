@@ -944,3 +944,23 @@ select:focus { outline: none; border-color: var(--accent); }
 .settings-row-arrow { color: var(--text-dim, #9a9ab0); font-size: 22px; }
 .settings-back { background: transparent; border: none; color: var(--text, #e8e8f0); font-size: 26px; line-height: 1; cursor: pointer; padding: 0 4px; }
 .settings-back:hover { color: #7c5cff; }
+
+
+/* ===== Croix de vidage recherche + fix champs budget (v3.4.2) ===== */
+.find-input-wrap { position: relative; flex: 1; display: flex; }
+.find-input-wrap input { width: 100%; box-sizing: border-box; padding-right: 38px !important; }
+.find-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: var(--border, #2a2a3a); color: var(--text, #e8e8f0); border: none;
+  width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+}
+.find-clear:hover { background: #ff5c7c; color: #fff; }
+
+/* Budget du mois / Prix moyen : empêcher le débordement (box-sizing + wrap mobile) */
+.plan-controls { flex-wrap: wrap; }
+.plan-controls .form-field { min-width: 0; }
+.plan-controls .form-field input { width: 100%; box-sizing: border-box; }
+@media (max-width: 640px) {
+  .plan-controls { flex-direction: column; gap: 12px; }
+}

@@ -75,7 +75,7 @@ export default function MonthlyPlan({ books, seriesMeta, blacklist, onClose, onA
   return (
     <div className="modal-overlay" onClick={e => e.target.classList.contains("modal-overlay") && onClose()}>
       <div className="modal" style={{ maxWidth: 620, maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
-        <div className="modal-header"><h2>🎯 Compléter ma collection — {monthName}</h2><button className="modal-close" onClick={onClose}>✕</button></div>
+        <div className="modal-header"><h2>🎯 Compléter — {monthName}</h2><button className="modal-close" onClick={onClose}>✕</button></div>
         <div className="modal-body" style={{ overflowY: "auto" }}>
           <div className="plan-controls">
             <div className="form-field">
@@ -123,7 +123,7 @@ export default function MonthlyPlan({ books, seriesMeta, blacklist, onClose, onA
             <button className="btn btn-ghost" onClick={onClose}>Fermer</button>
             <span style={{ display: "flex", gap: 8 }}>
               {selection.picks.length > 0 && <button className="btn btn-ghost" onClick={addAllToWishlist}>💜 Tout en wishlist</button>}
-              {selection.picks.length > 0 && <button className="btn btn-primary" onClick={amazonCart}>🛒 Ouvrir sur Amazon</button>}
+              {selection.picks.length > 0 && <button className="btn btn-primary" onClick={amazonCart}>🛒 Amazon</button>}
             </span>
           </div>
         </div>

@@ -33,7 +33,10 @@ export default function FindModal({ books, refCatalog, onAdd, onScan, onClose })
       <div className="modal" style={{ maxWidth: 640, maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
         <div className="modal-header"><h2>🔎 Chercher un album</h2><button className="modal-close" onClick={onClose}>✕</button></div>
         <div className="find-search">
-          <input type="text" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="Titre, série, auteur ou ISBN…" autoFocus />
+          <div className="find-input-wrap">
+            <input type="text" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="Titre, série, auteur ou ISBN…" autoFocus />
+            {q && <button className="find-clear" title="Vider" onClick={() => { setQ(""); setResults([]); setChecked(new Set()); setStatus("Tape un titre, une série, un auteur ou un ISBN."); }}>✕</button>}
+          </div>
           <button className="btn btn-primary" onClick={search}>🔎</button>
         </div>
         <button className="find-scan-btn" onClick={() => { onClose(); if (onScan) onScan(); }}>
