@@ -186,14 +186,12 @@ async function tryBnF(isbn) {
     + "&recordSchema=unimarcxchange&maximumRecords=1";
   const xml = await fetchText(url, 8000);
   if (!xml || !/numberOfRecords/i.test(xml)) return null;
-  // 0 résultat ?
   const nb = xml.match(/<[^>]*numberOfRecords[^>]*>\s*(\d+)/i);
   if (nb && nb[1] === "0") return null;
 
-  // UNIMARC : 200$a = titre, 200$f = auteur mention, 210$c = éditeur, 210$d = date, 225$a = collection(série)
+  // UNIMARC : 200$a titre, 210$c éditeur (prendre le DERNIER $c), 210$d date, 225$a collection(série)
   const titre = unimarcSub(xml, "200", "a");
   const serie = unimarcSub(xml, "225", "a") || unimarcSub(xml, "461", "t");
-  // auteurs : 700/701/702 $a (nom) + $b (prénom)
   const authNames = [];
   ["700", "701", "702"].forEach(f => {
     const noms = unimarcAllSub(xml, f, "a");
@@ -201,13 +199,25 @@ async function tryBnF(isbn) {
     noms.forEach((nom, k) => { const pre = prenoms[k] || ""; authNames.push((pre + " " + nom).trim()); });
   });
   const auteur = authNames.join(", ");
-  let editeur = unimarcSub(xml, "210", "c");
+  // éditeur : il peut y avoir plusieurs $c (co-éditions) — on prend le dernier non vide
+  const editeurs = unimarcAllSub(xml, "210", "c");
+  let editeur = editeurs.length ? editeurs[editeurs.length - 1] : "";
   const dmatch = (unimarcSub(xml, "210", "d") || xml).match(/\b(19|20)\d{2}\b/);
   const annee = dmatch ? dmatch[0] : "";
 
+  // couverture : vignette BnF via l'ARK (ex: ark:/12148/cb48630154f) si présent
+  let cover = "";
+  const ark = xml.match(/ark:\/12148\/(cb[0-9a-z]+)/i);
+  if (ark) cover = "https://catalogue.bnf.fr/couverture?appName=NE&idArk=ark:/12148/" + ark[1] + "&couverture=1";
+
   if (!titre) return null;
-  const full = (serie && !new RegExp(serie, "i").test(titre)) ? (serie + " — " + titre) : titre;
-  return { titre: full, auteur, editeur: editeur || "", annee, cover: "", serie, source: "bnf" };
+  // concatène série + titre sans doublon (échappe les caractères regex de la série)
+  let full = titre;
+  if (serie) {
+    const esc = serie.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!new RegExp(esc, "i").test(titre)) full = serie + " — " + titre;
+  }
+  return { titre: full, auteur, editeur: editeur || "", annee, cover, serie, source: "bnf" };
 }
 
 // ---- Source 4 : ISBNdb (API à clé, en DERNIER recours pour économiser le quota) ----
