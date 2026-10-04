@@ -51,7 +51,7 @@ export function createScanEngine() {
           if (codes && codes.length) {
             let raw = "";
             for (const cd of codes) { const c = cleanIsbn(cd.rawValue); if (isValidBookEAN(c)) { raw = c; break; } }
-            if (raw) { stop(); onCode(raw); }
+            if (raw) { onCode(raw); }
             else onStatus("Code détecté mais non-livre — vise le code ISBN (978…)");
           }
         } catch {}
@@ -70,7 +70,7 @@ export function createScanEngine() {
     mode = "zxing";
     onStatus("Vise le code-barre au dos de la BD… (lecteur ZXing)");
     zxingReader.decodeFromVideoDevice(null, video, (result) => {
-      if (result) { const raw = cleanIsbn(result.getText()); if (isValidBookEAN(raw)) { stop(); onCode(raw); } }
+      if (result) { const raw = cleanIsbn(result.getText()); if (isValidBookEAN(raw)) { onCode(raw); } }
     });
     return mode;
   }

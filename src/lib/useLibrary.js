@@ -101,21 +101,22 @@ export function useLibrary(userId) {
   // Supprime les entrées parasites (lignes d'exemple/template importées par erreur :
   // "Serie — T.TypeObjet — Descriptif", "Revue — T.Num — Titre", "Largeur / Profondeur"...).
   const cleanupJunk = useCallback(async () => {
-    const junkRe = /(T\.TypeObjet|T\.Num|TypeObjet|Descriptif|Largeur\s*\/\s*Profondeur|^Serie\b|^Revue\b)/i;
+    // ULTRA-STRICT : on supprime UNIQUEMENT les entrées sans AUCUNE information.
+    // Une entrée est supprimée seulement si TOUS ces champs sont vides/absents :
+    // titre (ou titre générique "ISBN ..."), série, auteur, éditeur, ISBN ET couverture.
     let targets = [];
     setBooks(bs => {
       targets = bs.filter(b => {
         const titre = (b.titre || "").trim();
+        const titreReel = titre && !/^ISBN\s/i.test(titre); // "ISBN 978..." ne compte pas comme un vrai titre
         const serie = (b.serie || "").trim();
+        const auteur = (b.auteur || "").trim();
+        const editeur = (b.editeur || "").trim();
         const isbnClean = String(b.isbn || "").replace(/[^0-9Xx]/g, "");
-        const noIsbn = isbnClean.length < 10;
-        const hay = serie + " " + titre;
-        // (a) motif template parasite sans ISBN
-        if (junkRe.test(hay) && noIsbn) return true;
-        // (b) entrée vide de sens : pas de titre réel ET pas de série ET pas d'ISBN
-        const titreVide = !titre || /^ISBN\s/i.test(titre);
-        if (titreVide && !serie && noIsbn) return true;
-        return false;
+        const hasIsbn = isbnClean.length >= 10;
+        const cover = (b.cover || "").trim();
+        // supprimée SEULEMENT si rien du tout
+        return !titreReel && !serie && !auteur && !editeur && !hasIsbn && !cover;
       });
       return bs;
     });

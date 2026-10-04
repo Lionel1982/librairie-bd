@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.7.0-supabase";
+const APP_VERSION = "3.8.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -43,6 +43,7 @@ function LibraryApp({ user }) {
   const [scanOpen, setScanOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [scrolled, setScrolled] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -53,14 +54,6 @@ function LibraryApp({ user }) {
 
   const notify = (m) => setToast(m);
   const pending = useMemo(() => books.filter(b => b.statut === "a-confirmer").length, [books]);
-
-  // Nettoyage automatique des entrées parasites/vides au chargement (une fois)
-  const cleanedRef = useRef(false);
-  useEffect(() => {
-    if (loading || cleanedRef.current || !books.length) return;
-    cleanedRef.current = true;
-    lib.cleanupJunk().then((r) => { if (r && r.removed) notify("🧹 " + r.removed + " entrée(s) vide(s) nettoyée(s)"); }).catch(() => {});
-  }, [loading]); // eslint-disable-line
 
   // Déclenchement auto de l'assistant de complétion au 1er lancement du mois (par utilisateur)
   useEffect(() => {
@@ -233,6 +226,9 @@ function LibraryApp({ user }) {
             <button className="action-tile" title="Compléter" onClick={() => setPlanOpen(true)}>
               <span className="action-icon">🎯</span><span className="action-label">Compléter</span>
             </button>
+            <button className="action-tile" title="Rechercher dans ma bibliothèque" onClick={() => setFilterOpen(o => !o)}>
+              <span className="action-icon">📚</span><span className="action-label">Filtrer</span>
+            </button>
           </div>
         </div>
       </div>
@@ -243,11 +239,14 @@ function LibraryApp({ user }) {
         ))}
       </div>
 
-      <div className="toolbar">
-        <div className="search-wrap"><span className="search-icon">🔍</span>
-          <input type="text" placeholder="Filtrer ma bibliothèque..." value={query} onChange={e => setQuery(e.target.value)} />
+      {filterOpen && (
+        <div className="floating-filter">
+          <div className="search-wrap"><span className="search-icon">🔍</span>
+            <input type="text" autoFocus placeholder="Rechercher dans ma bibliothèque…" value={query} onChange={e => setQuery(e.target.value)} />
+            <button className="floating-filter-close" title="Fermer" onClick={() => { setQuery(""); setFilterOpen(false); }}>✕</button>
+          </div>
         </div>
-      </div>
+      )}
 
       <main className="library">
         {viewMode === "biblio" && <LibraryGrid books={books.filter(b => b.statut === "lu" || b.statut === "jai")} query={query} onOpen={setEditingId} />}

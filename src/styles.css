@@ -987,3 +987,26 @@ select:focus { outline: none; border-color: var(--accent); }
   padding: 3px 8px; border-radius: 999px; pointer-events: none;
   box-shadow: 0 2px 8px rgba(0,0,0,.4);
 }
+
+
+/* ===== Champ de recherche flottant dans la bibliothèque (4e bouton) ===== */
+.floating-filter {
+  position: sticky; top: 70px; z-index: 180; margin-bottom: 14px;
+  animation: floatIn .15s ease;
+}
+@keyframes floatIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.floating-filter .search-wrap { position: relative; display: flex; }
+.floating-filter input {
+  width: 100%; box-sizing: border-box; padding: 14px 42px 14px 42px;
+  border-radius: 12px; border: 1px solid #7c5cff; background: var(--surface, #14141c);
+  color: var(--text, #e8e8f0); font-size: 16px; outline: none;
+  box-shadow: 0 8px 28px rgba(0,0,0,.45);
+}
+.floating-filter .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); opacity: .7; z-index: 1; }
+.floating-filter-close {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: var(--border, #2a2a3a); color: var(--text, #e8e8f0); border: none;
+  width: 26px; height: 26px; border-radius: 50%; cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+}
+.floating-filter-close:hover { background: #ff5c7c; color: #fff; }
