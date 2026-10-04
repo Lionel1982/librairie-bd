@@ -36,7 +36,7 @@ export function useLibrary(userId) {
   }, []);
 
   const addBooksBulk = useCallback(async (list) => {
-    const saved = await DB.insertBooks(list);
+    const saved = await DB.insertBooks(list);   // peut lever une erreur (remontée à l'appelant)
     if (saved.length) setBooks(bs => [...saved, ...bs]);
     return saved;
   }, []);

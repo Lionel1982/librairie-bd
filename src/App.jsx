@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.0.0-supabase";
+const APP_VERSION = "3.0.1-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -131,18 +131,25 @@ function LibraryApp({ user }) {
         catalog.push({ titre: t||titre, serie, tome: tomeNum, auteur, editeur: get(r,"Editeur"), annee: yearOf(get(r,"DL"))+"", isbn, cover });
         newBooks.push({ statut, titre, serie, tome: tomeNum, auteur, editeur: get(r,"Editeur"), annee: yearOf(get(r,"DL")), isbn, note: note5(get(r,"Note")), commentaire: get(r,"PrixAchat")?("Acheté "+get(r,"PrixAchat")+"€"):"", cover, _coverOk: false });
       }
+      notify("⏳ Analyse CSV : " + newBooks.length + " ligne(s) détectée(s)…");
       // dédoublonnage vs existant
       const existing = books.slice();
       const toAdd = [];
       newBooks.forEach(nb => { if (!S.findDuplicate(existing, nb) && !S.findDuplicate(toAdd, nb)) toAdd.push(nb); });
-      const saved = await lib.addBooksBulk(toAdd);
-      notify("📚 " + saved.length + " album(s) importé(s)");
-      // fusion catalogue de référence
-      const merged = refCatalog.slice();
-      const keyf = c => c.isbn ? S.cleanIsbn(c.isbn) : S.normTitle((c.serie||"")+"|"+(c.titre||""))+"|"+(c.tome||"");
-      const seen = new Set(merged.map(keyf));
-      catalog.forEach(c => { const k = keyf(c); if (!seen.has(k)) { seen.add(k); merged.push(c); } });
-      await lib.replaceCatalog(merged);
+      if (!toAdd.length) { notify("⚠️ 0 album à importer (CSV vide ou colonnes non reconnues)"); return; }
+      try {
+        const saved = await lib.addBooksBulk(toAdd);
+        notify("📚 " + saved.length + " album(s) importé(s)");
+        // fusion catalogue de référence
+        const merged = refCatalog.slice();
+        const keyf = c => c.isbn ? S.cleanIsbn(c.isbn) : S.normTitle((c.serie||"")+"|"+(c.titre||""))+"|"+(c.tome||"");
+        const seen = new Set(merged.map(keyf));
+        catalog.forEach(c => { const k = keyf(c); if (!seen.has(k)) { seen.add(k); merged.push(c); } });
+        await lib.replaceCatalog(merged);
+      } catch (err) {
+        console.error("Import échec", err);
+        notify("❌ Import : " + (err?.message || "erreur inconnue") + (err?._hint ? " — " + err._hint : ""));
+      }
     };
     reader.readAsText(file, "UTF-8");
   }

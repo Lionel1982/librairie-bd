@@ -50,11 +50,18 @@ export async function insertBook(b) {
   return rowToBook(data);
 }
 export async function insertBooks(list) {
-  const userId = await uid(); if (!userId || !list.length) return [];
+  const userId = await uid();
+  if (!userId) { console.warn("insertBooks: pas de session"); const e = new Error("Pas de session (reconnecte-toi)"); e._bdlib = true; throw e; }
+  if (!list.length) return [];
   const rows = list.map(b => bookToRow(b, userId));
-  const { data, error } = await supabase.from("books").insert(rows).select();
-  if (error) { console.warn("insertBooks", error); return []; }
-  return (data || []).map(rowToBook);
+  // insertion par lots de 200 pour éviter les payloads trop gros
+  const out = [];
+  for (let i = 0; i < rows.length; i += 200) {
+    const { data, error } = await supabase.from("books").insert(rows.slice(i, i + 200)).select();
+    if (error) { console.warn("insertBooks", error); const e = new Error(error.message || JSON.stringify(error)); e._bdlib = true; e._code = error.code; e._details = error.details; e._hint = error.hint; throw e; }
+    (data || []).forEach(r => out.push(rowToBook(r)));
+  }
+  return out;
 }
 export async function updateBook(id, patch) {
   const userId = await uid(); if (!userId) return null;
