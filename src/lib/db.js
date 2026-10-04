@@ -71,12 +71,15 @@ export async function updateBook(id, patch) {
   return rowToBook(data);
 }
 export async function deleteBook(id) {
+  // DIAGNOSTIC : qui suis-je côté client au moment du delete ?
+  let who = "?";
+  try { const { data: u } = await supabase.auth.getUser(); who = u?.user?.id || "NULL(anon)"; } catch { who = "ERR"; }
   // .select() permet de savoir combien de lignes ont RÉELLEMENT été supprimées
   // (RLS peut filtrer sans erreur : 0 ligne supprimée = la ligne revient au refresh).
   const { data, error } = await supabase.from("books").delete().eq("id", id).select();
   if (error) { console.warn("deleteBook", error); const e = new Error(error.message || "delete refusé"); e._bdlib = true; throw e; }
   const n = (data || []).length;
-  if (n === 0) { const e = new Error("Suppression bloquée (aucune ligne supprimée — RLS/permission)"); e._bdlib = true; e._zero = true; throw e; }
+  if (n === 0) { const e = new Error("0 ligne supprimée — session vue=" + who); e._bdlib = true; e._zero = true; throw e; }
   return true;
 }
 
