@@ -893,34 +893,54 @@ select:focus { outline: none; border-color: var(--accent); }
 .tinder-nocover-text { font-size: 16px; font-weight: 600; }
 .tinder-nocover-hint { font-size: 12px; opacity: .8; }
 .settings-cover-msg { margin-top: 10px; font-size: 13px; color: var(--text, #e8e8f0); background: var(--surface-2, #1a1a24); border: 1px solid var(--border, #2a2a3a); border-radius: 8px; padding: 8px 12px; }
-
-
-/* ===== En-tête collant (sticky) : header + actions + onglets restent visibles au scroll ===== */
-.app-header, .action-bar, .mode-tabs, .toolbar {
-  position: sticky;
-  z-index: 50;
+/* ===== En-tête collant (sticky) : header + actions + filtre restent visibles au scroll =====
+   Les onglets (mode-tabs) NE sont PAS collés. Fond opaque pour masquer le contenu qui défile. */
+.app-header {
+  position: sticky; top: 0; z-index: 200;
   background: var(--bg, #0b0b10);
+  padding-top: 8px; padding-bottom: 8px;
 }
-.app-header { top: 0; padding-top: 8px; }
-.action-bar { top: 56px; }
-.mode-tabs  { top: 160px; }
-.toolbar    { top: 212px; }
+.action-bar {
+  position: sticky; top: 54px; z-index: 150;
+  background: var(--bg, #0b0b10);
+  padding-bottom: 10px;
+}
+.toolbar {
+  position: sticky; top: 150px; z-index: 150;
+  background: var(--bg, #0b0b10);
+  padding-top: 4px; padding-bottom: 10px;
+}
+.mode-tabs { position: static; } /* onglets non collés : défilent avec le contenu */
+
+/* Burger : son panneau doit passer AU-DESSUS de tout */
+.burger-menu { z-index: 300; }
+.burger-menu .hdr-menu-panel { z-index: 400; }
 
 /* Version compacte au scroll : les grosses cases rétrécissent, restent visibles */
-.app-scrolled .action-tile { min-height: 48px; padding: 8px 10px; flex-direction: row; gap: 8px; }
+.app-scrolled .action-tile { min-height: 46px; padding: 8px 10px; flex-direction: row; gap: 8px; }
 .app-scrolled .action-tile .action-icon { font-size: 20px; }
 .app-scrolled .action-tile .action-label { font-size: 13px; }
-.app-scrolled .action-tile .action-label br { display: none; }
-.app-scrolled .action-bar { top: 52px; }
-.app-scrolled .mode-tabs { top: 108px; }
-.app-scrolled .toolbar { top: 160px; }
-.app-scrolled .app-header { box-shadow: 0 2px 12px rgba(0,0,0,.4); }
+.app-scrolled .action-bar { top: 50px; }
+.app-scrolled .toolbar { top: 104px; }
+.app-scrolled .app-header { box-shadow: 0 4px 16px rgba(0,0,0,.5); }
 
 @media (max-width: 640px) {
-  .action-bar { top: 52px; }
-  .mode-tabs { top: 150px; }
-  .toolbar { top: 198px; }
+  .action-bar { top: 50px; }
+  .toolbar { top: 150px; }
   .app-scrolled .action-tile { min-height: 44px; }
-  .app-scrolled .mode-tabs { top: 100px; }
-  .app-scrolled .toolbar { top: 150px; }
+  .app-scrolled .toolbar { top: 100px; }
 }
+
+
+/* ===== Paramètres : navigation en rubriques ===== */
+.settings-menu { display: flex; flex-direction: column; gap: 10px; }
+.settings-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--surface-2, #1a1a24); border: 1px solid var(--border, #2a2a3a); border-radius: 12px; padding: 14px 14px; cursor: pointer; transition: border-color .15s, background .15s; }
+.settings-row:hover { border-color: #7c5cff; background: var(--surface, #14141c); }
+.settings-row-ico { font-size: 24px; flex-shrink: 0; }
+.settings-row-txt { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.settings-row-txt b { color: var(--text, #e8e8f0); font-size: 15px; }
+.settings-row-txt small { color: var(--text-dim, #9a9ab0); font-size: 12px; }
+.settings-row-badge { background: #7c5cff; color: #fff; font-size: 12px; font-weight: 700; min-width: 22px; height: 22px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; }
+.settings-row-arrow { color: var(--text-dim, #9a9ab0); font-size: 22px; }
+.settings-back { background: transparent; border: none; color: var(--text, #e8e8f0); font-size: 26px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.settings-back:hover { color: #7c5cff; }

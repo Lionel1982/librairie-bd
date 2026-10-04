@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.4.0-supabase";
+const APP_VERSION = "3.4.1-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -213,7 +213,7 @@ function LibraryApp({ user }) {
               <button className="hdr-menu-item" onClick={() => { exportJson(); close(); }}>⬇️ Exporter (JSON)</button>
               <button className="hdr-menu-item" onClick={() => { migrateFromLocalStorage(); close(); }}>⬆️ Migrer mes données locales</button>
               <div className="hdr-menu-sep" />
-              <button className="hdr-menu-item" onClick={() => { setSettingsOpen(true); close(); }}>⚙️ Paramètres (liste noire)</button>
+              <button className="hdr-menu-item" onClick={() => { setSettingsOpen(true); close(); }}>⚙️ Paramètres</button>
               <div className="hdr-menu-sep" />
               <button className="hdr-menu-item" onClick={() => { logout(); close(); }}>🚪 Se déconnecter</button>
             </>)}
@@ -224,7 +224,7 @@ function LibraryApp({ user }) {
       <div className="action-bar">
         <button className="action-tile action-primary" onClick={() => setFindOpen(true)}>
           <span className="action-icon">🔎</span>
-          <span className="action-label">Chercher<br />un album</span>
+          <span className="action-label">Chercher</span>
         </button>
         <button className={"action-tile" + (pending ? " action-pending" : "")} onClick={() => setTinderOpen(true)}>
           <span className="action-icon">🔥</span>
