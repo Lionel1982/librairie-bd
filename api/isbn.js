@@ -1,8 +1,9 @@
 // Fonction serverless Vercel : /api/isbn?isbn=978...
 // Résout un ISBN en { titre, auteur, editeur, annee, cover } en enchaînant
 // plusieurs sources GRATUITES côté serveur (pas de souci CORS, pas de clé).
-// Ordre : Google Books -> OpenLibrary -> Google Books (recherche large) ->
-//         recherche libraires FR (OpenGraph) pour les BD franco-belges.
+// Ordre : BnF (dépôt légal FR, couvre les BD franco-belges) -> Google Books ->
+//         OpenLibrary -> recherche libraires FR -> ISBNdb (si clé). La couverture
+//         vient d'OpenLibrary par ISBN en secours quand la source n'en fournit pas.
 
 function clean(s) { return String(s || "").replace(/[^0-9Xx]/g, "").toUpperCase(); }
 
@@ -146,6 +147,69 @@ async function tryLibrairieFR(isbn) {
   return null;
 }
 
+// ---- Source FR PRINCIPALE : BnF (dépôt légal français — couvre toutes les BD FR) ----
+// API SRU publique, sans clé, renvoie du XML UNIMARC. Idéale pour les BD franco-belges
+// absentes de Google Books / OpenLibrary.
+function xmlField(xml, tag) {
+  // récupère le contenu du 1er <...>tag<...> quel que soit le préfixe de namespace
+  const re = new RegExp("<[^>]*\\b" + tag + "\\b[^>]*>([\\s\\S]*?)<\\/[^>]*" + tag + "[^>]*>", "i");
+  const m = xml.match(re);
+  return m ? m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "";
+}
+// UNIMARC : les zones sont des <mxc:datafield tag="200"> avec des <mxc:subfield code="a">…
+function unimarcSub(xml, fieldTag, subCode) {
+  const fre = new RegExp('<[^>]*datafield[^>]*tag="' + fieldTag + '"[^>]*>([\\s\\S]*?)<\\/[^>]*datafield>', "i");
+  const fm = xml.match(fre);
+  if (!fm) return "";
+  const sre = new RegExp('<[^>]*subfield[^>]*code="' + subCode + '"[^>]*>([\\s\\S]*?)<\\/[^>]*subfield>', "i");
+  const sm = fm[1].match(sre);
+  return sm ? sm[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "";
+}
+function unimarcAllSub(xml, fieldTag, subCode) {
+  const out = [];
+  const fre = new RegExp('<[^>]*datafield[^>]*tag="' + fieldTag + '"[^>]*>([\\s\\S]*?)<\\/[^>]*datafield>', "ig");
+  let fm;
+  while ((fm = fre.exec(xml)) !== null) {
+    const sre = new RegExp('<[^>]*subfield[^>]*code="' + subCode + '"[^>]*>([\\s\\S]*?)<\\/[^>]*subfield>', "ig");
+    let sm;
+    while ((sm = sre.exec(fm[1])) !== null) {
+      const v = sm[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      if (v) out.push(v);
+    }
+  }
+  return out;
+}
+
+async function tryBnF(isbn) {
+  const url = "https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve"
+    + "&query=" + encodeURIComponent('bib.ean all "' + isbn + '"')
+    + "&recordSchema=unimarcxchange&maximumRecords=1";
+  const xml = await fetchText(url, 8000);
+  if (!xml || !/numberOfRecords/i.test(xml)) return null;
+  // 0 résultat ?
+  const nb = xml.match(/<[^>]*numberOfRecords[^>]*>\s*(\d+)/i);
+  if (nb && nb[1] === "0") return null;
+
+  // UNIMARC : 200$a = titre, 200$f = auteur mention, 210$c = éditeur, 210$d = date, 225$a = collection(série)
+  const titre = unimarcSub(xml, "200", "a");
+  const serie = unimarcSub(xml, "225", "a") || unimarcSub(xml, "461", "t");
+  // auteurs : 700/701/702 $a (nom) + $b (prénom)
+  const authNames = [];
+  ["700", "701", "702"].forEach(f => {
+    const noms = unimarcAllSub(xml, f, "a");
+    const prenoms = unimarcAllSub(xml, f, "b");
+    noms.forEach((nom, k) => { const pre = prenoms[k] || ""; authNames.push((pre + " " + nom).trim()); });
+  });
+  const auteur = authNames.join(", ");
+  let editeur = unimarcSub(xml, "210", "c");
+  const dmatch = (unimarcSub(xml, "210", "d") || xml).match(/\b(19|20)\d{2}\b/);
+  const annee = dmatch ? dmatch[0] : "";
+
+  if (!titre) return null;
+  const full = (serie && !new RegExp(serie, "i").test(titre)) ? (serie + " — " + titre) : titre;
+  return { titre: full, auteur, editeur: editeur || "", annee, cover: "", serie, source: "bnf" };
+}
+
 // ---- Source 4 : ISBNdb (API à clé, en DERNIER recours pour économiser le quota) ----
 // N'est appelée que si la variable d'environnement ISBNDB_API_KEY est définie (côté serveur Vercel).
 // Clé envoyée dans le header Authorization (jamais en query string).
@@ -186,9 +250,10 @@ export default async function handler(req, res) {
 
   // Essaie les sources dans l'ordre, en fusionnant ce qui manque
   let result = null;
-  for (const v of vs) {
-    result = await tryGoogle(v);
-    if (result && result.titre) break;
+  // BnF d'abord (dépôt légal FR : couvre les BD franco-belges)
+  for (const v of vs) { const r = await tryBnF(v); if (r && r.titre) { result = r; break; } }
+  if (!result || !result.titre) {
+    for (const v of vs) { const r = await tryGoogle(v); if (r && r.titre) { result = r; break; } }
   }
   if (!result || !result.titre) {
     for (const v of vs) { const r = await tryOpenLibrary(v); if (r && r.titre) { result = r; break; } }
