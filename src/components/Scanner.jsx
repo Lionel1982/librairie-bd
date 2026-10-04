@@ -1,16 +1,21 @@
 import React, { useRef, useState, useEffect } from "react";
 import { createScanEngine, isValidBookEAN } from "../lib/scanner.js";
-import { lookupByISBN, } from "../lib/api.js";
-import { cleanIsbn, uid } from "../lib/store.js";
+import { lookupByISBN } from "../lib/api.js";
+import { cleanIsbn, isbnVariants } from "../lib/store.js";
 
-// Scanner code-barre (web BarcodeDetector/ZXing ; natif ML Kit plus tard via lib/scanner.js)
-export default function Scanner({ onAdd, onClose }) {
+// Scanner code-barre — mode "scan en lot puis complétion".
+// On accumule les ISBN scannés (fluide, pas de lookup pendant le scan),
+// puis on complète les infos en lot à la validation.
+export default function Scanner({ onAddMany, onClose }) {
   const videoRef = useRef(null);
   const engineRef = useRef(null);
   const [status, setStatus] = useState("Initialisation de la caméra…");
+  const [queue, setQueue] = useState([]);      // liste d'ISBN scannés (uniques)
   const [manual, setManual] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [lastAdded, setLastAdded] = useState(null);
+  const [working, setWorking] = useState(false); // lookup en cours
+  const [progress, setProgress] = useState("");
+  const queueRef = useRef([]);
+  const lastBeepRef = useRef(0);
 
   useEffect(() => {
     const engine = createScanEngine();
@@ -20,67 +25,103 @@ export default function Scanner({ onAdd, onClose }) {
     return () => { engine.stop(); };
   }, []); // eslint-disable-line
 
-  async function onCode(rawIsbn) {
-    if (busy) return;
-    setBusy(true);
-    setStatus("📖 Code " + rawIsbn + " détecté — recherche…");
-    await addByIsbn(rawIsbn);
-    setBusy(false);
-    // relance le scan pour enchaîner (multi-ajout)
-    setStatus("✅ Ajouté ! Vise un autre code-barre…");
-    try { engineRef.current.start(videoRef.current, onCode, setStatus); } catch {}
-  }
-
-  async function addByIsbn(rawIsbn) {
+  function onCode(rawIsbn) {
     const isbn = cleanIsbn(rawIsbn);
-    let info = {};
-    try { info = await lookupByISBN(isbn); } catch {}
-    const book = {
-      id: uid(), createdAt: Date.now(), statut: "a-confirmer", note: 0,
-      commentaire: "Scanné (à confirmer)",
-      titre: info.titre || ("ISBN " + isbn), serie: "", tome: "",
-      auteur: info.auteur || "", editeur: info.editeur || "", annee: info.annee || "",
-      isbn: info.isbn || isbn, cover: info.cover || "", _coverOk: !!info.cover,
-    };
-    onAdd(book);
-    setLastAdded(book);
+    if (!isValidBookEAN(isbn)) return;
+    // anti-rebond : ignore si déjà dans la file ou scanné il y a < 1,5s
+    const now = Date.now();
+    if (now - lastBeepRef.current < 1500) return;
+    if (queueRef.current.includes(isbn)) { setStatus("Déjà scanné : " + isbn); return; }
+    lastBeepRef.current = now;
+    queueRef.current = [...queueRef.current, isbn];
+    setQueue(queueRef.current.slice());
+    setStatus("✅ " + isbn + " ajouté à la liste. Vise le suivant…");
+    try { navigator.vibrate && navigator.vibrate(60); } catch {}
   }
 
-  async function submitManual() {
+  function addManual() {
     const isbn = cleanIsbn(manual);
-    if (!isValidBookEAN(isbn) && isbn.length !== 10) { setStatus("⚠️ ISBN invalide (attendu : 978… / 979… ou ISBN-10)"); return; }
-    setBusy(true); setStatus("🔎 Recherche…");
-    await addByIsbn(isbn);
-    setManual(""); setBusy(false); setStatus("✅ Ajouté via saisie manuelle.");
+    if (!isValidBookEAN(isbn) && isbn.length !== 10) { setStatus("⚠️ ISBN invalide (978…/979… ou ISBN-10)"); return; }
+    if (queueRef.current.includes(isbn)) { setStatus("Déjà dans la liste."); setManual(""); return; }
+    queueRef.current = [...queueRef.current, isbn];
+    setQueue(queueRef.current.slice());
+    setManual("");
+  }
+
+  function removeFromQueue(isbn) {
+    queueRef.current = queueRef.current.filter(x => x !== isbn);
+    setQueue(queueRef.current.slice());
+  }
+
+  // Complétion en lot : lookup chaque ISBN, construit les livres, renvoie à App
+  async function finishAndComplete() {
+    if (!queueRef.current.length) { onClose(); return; }
+    setWorking(true);
+    try { engineRef.current.stop(); } catch {}
+    const list = queueRef.current.slice();
+    const books = [];
+    for (let i = 0; i < list.length; i++) {
+      const isbn = list[i];
+      setProgress("Complétion " + (i + 1) + "/" + list.length + " — " + isbn + "…");
+      let info = {};
+      try { info = await lookupByISBN(isbn); } catch {}
+      const variants = isbnVariants(isbn);
+      const cover = info.cover || (variants[0] ? "https://covers.openlibrary.org/b/isbn/" + (variants.find(v => v.length === 13) || variants[0]) + "-L.jpg" : "");
+      books.push({
+        statut: "a-confirmer", note: 0, commentaire: "Scanné (à confirmer)",
+        titre: info.titre || ("ISBN " + isbn), serie: "", tome: "",
+        auteur: info.auteur || "", editeur: info.editeur || "", annee: info.annee || "",
+        isbn: info.isbn || isbn, cover, _coverOk: !!cover,
+      });
+    }
+    onAddMany(books);   // App gère l'insert Supabase + dédoublonnage + toast
   }
 
   return (
     <div className="scanner-overlay">
       <div className="scanner-top">
-        <span className="scanner-title">📷 Scanner un code-barre</span>
+        <span className="scanner-title">📷 Scanner</span>
         <button className="modal-close" onClick={onClose}>✕</button>
       </div>
 
-      <div className="scanner-video-wrap">
-        <video ref={videoRef} className="scanner-video" playsInline muted />
-        <div className="scanner-reticle" />
-      </div>
+      {!working ? (<>
+        <div className="scanner-video-wrap">
+          <video ref={videoRef} className="scanner-video" playsInline muted />
+          <div className="scanner-reticle" />
+        </div>
+        <div className="scanner-status">{status}</div>
 
-      <div className="scanner-status">{status}</div>
+        <div className="scanner-manual">
+          <input type="text" inputMode="numeric" placeholder="…ou tape l'ISBN (978…)"
+            value={manual} onChange={e => setManual(e.target.value)} onKeyDown={e => e.key === "Enter" && addManual()} />
+          <button className="btn btn-ghost" onClick={addManual}>+ Ajouter</button>
+        </div>
 
-      {lastAdded && (
-        <div className="scanner-last">
-          Dernier ajout : <b>{lastAdded.titre}</b>{lastAdded.isbn ? " (ISBN " + lastAdded.isbn + ")" : ""} — à trier dans 🔥
+        {queue.length > 0 && (
+          <div className="scan-queue">
+            <div className="scan-queue-head">{queue.length} code(s) scanné(s)</div>
+            <div className="scan-queue-list">
+              {queue.map(isbn => (
+                <span className="scan-chip" key={isbn}>{isbn}<button onClick={() => removeFromQueue(isbn)}>✕</button></span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="scanner-actions">
+          <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
+          <button className="btn btn-primary scanner-finish" disabled={!queue.length} onClick={finishAndComplete}>
+            ✓ Ajouter les {queue.length || ""}
+          </button>
+        </div>
+        <p className="scanner-hint">Scanne plusieurs BD à la suite, puis « Ajouter ». Elles arrivent en « à confirmer » (🔥 Trier). Seuls les ISBN livre (978/979) sont acceptés.</p>
+      </>) : (
+        <div className="scanner-working">
+          <div className="scanner-spinner">⏳</div>
+          <div className="scanner-progress">{progress}</div>
+          <p className="scanner-hint">Récupération des titres et couvertures…</p>
         </div>
       )}
-
-      <div className="scanner-manual">
-        <input type="text" inputMode="numeric" placeholder="Ou tape l'ISBN à la main (978…)"
-          value={manual} onChange={e => setManual(e.target.value)} onKeyDown={e => e.key === "Enter" && submitManual()} />
-        <button className="btn btn-primary" onClick={submitManual} disabled={busy}>Ajouter</button>
-      </div>
-
-      <p className="scanner-hint">Les albums scannés arrivent en « à confirmer » — tu les tries ensuite dans 🔥 Trier.</p>
     </div>
   );
 }

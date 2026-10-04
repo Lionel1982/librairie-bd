@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.0.2-supabase";
+const APP_VERSION = "3.1.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -61,9 +61,18 @@ function LibraryApp({ user }) {
   }, [loading]); // eslint-disable-line
 
   // ---------- actions ----------
-  async function addScanned(book) {
-    if (S.findDuplicate(books, book)) { notify("Déjà présent : " + (book.titre || book.isbn)); return; }
-    await lib.addBook(book);
+  async function addScannedMany(list) {
+    const toAdd = list.filter(nb => !S.findDuplicate(books, nb));
+    const skipped = list.length - toAdd.length;
+    try {
+      const saved = toAdd.length ? await lib.addBooksBulk(toAdd) : [];
+      let msg = "📷 " + saved.length + " album(s) scanné(s) ajouté(s)";
+      if (skipped) msg += " · " + skipped + " doublon(s) ignoré(s)";
+      notify(msg);
+    } catch (err) {
+      notify("❌ Ajout scan : " + (err?.message || "erreur"));
+    }
+    setScanOpen(false);
   }
   async function upsertBook(data, id) {
     if (id) { await lib.editBook(id, data); }
@@ -189,31 +198,36 @@ function LibraryApp({ user }) {
           <span className="app-version">v{APP_VERSION}</span>
         </div>
         <div className="header-actions">
-          <button className="btn btn-ghost" onClick={() => setFindOpen(true)}>🔎 Chercher un album</button>
-          <button className={"btn btn-ghost" + (pending ? " has-pending" : "")} onClick={() => setTinderOpen(true)}>🔥 Trier{pending ? " (" + pending + ")" : ""}</button>
-          <button className="btn btn-ghost" onClick={() => setPlanOpen(true)}>🎯 Compléter</button>
-
-          <Menu align="right" trigger={<>⚙️</>} buttonClass="btn btn-ghost" className="gear-menu">
+          <Menu align="left" trigger={<>☰</>} buttonClass="btn btn-ghost btn-burger" className="burger-menu">
             {(close) => (<>
+              <div className="hdr-menu-user">{user.email}</div>
+              <div className="hdr-menu-sep" />
               <button className="hdr-menu-item" onClick={() => { close(); setTimeout(() => fileInputRef.current && fileInputRef.current.click(), 50); }}>📚 Importer BDGest</button>
               <button className="hdr-menu-item" onClick={() => { exportJson(); close(); }}>⬇️ Exporter (JSON)</button>
               <button className="hdr-menu-item" onClick={() => { migrateFromLocalStorage(); close(); }}>⬆️ Migrer mes données locales</button>
               <div className="hdr-menu-sep" />
               <button className="hdr-menu-item" onClick={() => { setSettingsOpen(true); close(); }}>⚙️ Paramètres (liste noire)</button>
               <div className="hdr-menu-sep" />
-              <div className="hdr-menu-user">{user.email}</div>
               <button className="hdr-menu-item" onClick={() => { logout(); close(); }}>🚪 Se déconnecter</button>
-            </>)}
-          </Menu>
-
-          <Menu align="right" trigger={<>➕ Ajouter</>} buttonClass="btn btn-primary" className="add-menu">
-            {(close) => (<>
-              <button className="hdr-menu-item" onClick={() => { setEditingId(null); close(); }}>✏️ Ajouter manuellement</button>
-              <button className="hdr-menu-item" onClick={() => { setScanOpen(true); close(); }}>📷 Scanner un code-barre</button>
             </>)}
           </Menu>
         </div>
       </header>
+
+      <div className="action-bar">
+        <button className="action-tile action-primary" onClick={() => setFindOpen(true)}>
+          <span className="action-icon">🔎</span>
+          <span className="action-label">Chercher<br />un album</span>
+        </button>
+        <button className={"action-tile" + (pending ? " action-pending" : "")} onClick={() => setTinderOpen(true)}>
+          <span className="action-icon">🔥</span>
+          <span className="action-label">Trier{pending ? <><br /><b>{pending}</b></> : ""}</span>
+        </button>
+        <button className="action-tile" onClick={() => setPlanOpen(true)}>
+          <span className="action-icon">🎯</span>
+          <span className="action-label">Compléter</span>
+        </button>
+      </div>
 
       <div className="mode-tabs">
         {tabs.map(([m, label]) => (
@@ -244,7 +258,7 @@ function LibraryApp({ user }) {
       )}
       {findOpen && (
         <FindModal books={books} refCatalog={refCatalog}
-          onAdd={onFindAdd}
+          onAdd={onFindAdd} onScan={() => setScanOpen(true)}
           onClose={() => setFindOpen(false)} />
       )}
       {tinderOpen && (
@@ -257,7 +271,7 @@ function LibraryApp({ user }) {
           onAddWish={addGapWish} onBlacklistSerie={blSerie} onBlacklistAlbum={blAlbum} onClose={() => setPlanOpen(false)} />
       )}
       {scanOpen && (
-        <Scanner onAdd={addScanned} onClose={() => setScanOpen(false)} />
+        <Scanner onAddMany={addScannedMany} onClose={() => setScanOpen(false)} />
       )}
       {settingsOpen && (
         <SettingsModal blacklist={blacklist}

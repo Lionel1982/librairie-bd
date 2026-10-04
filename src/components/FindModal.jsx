@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { uid, cleanIsbn, extractTome } from "../lib/store.js";
 import { searchCandidates } from "../lib/api.js";
 
-export default function FindModal({ books, refCatalog, onAdd, onClose }) {
+export default function FindModal({ books, refCatalog, onAdd, onScan, onClose }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState([]);
   const [checked, setChecked] = useState(new Set());
@@ -36,6 +36,9 @@ export default function FindModal({ books, refCatalog, onAdd, onClose }) {
           <input type="text" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="Titre, série, auteur ou ISBN…" autoFocus />
           <button className="btn btn-primary" onClick={search}>🔎</button>
         </div>
+        <button className="find-scan-btn" onClick={() => { onClose(); if (onScan) onScan(); }}>
+          📷 Scanner un code-barre
+        </button>
         <div className="find-status">{status}</div>
         <div className="find-list">
           {results.map((c, i) => {
