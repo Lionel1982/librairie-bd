@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.2.0-supabase";
+const APP_VERSION = "3.3.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -276,6 +276,7 @@ function LibraryApp({ user }) {
       {settingsOpen && (
         <SettingsModal blacklist={blacklist}
           onUnblacklistSerie={unblSerie} onUnblacklistAlbum={unblAlbum}
+          onRefreshCovers={lib.refreshCoversBnF}
           onClose={() => setSettingsOpen(false)} />
       )}
       <Toast message={toast} onDone={() => setToast("")} />

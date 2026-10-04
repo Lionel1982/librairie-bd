@@ -206,3 +206,20 @@ export async function lookupByISBNRemote(isbnRaw) {
     return { titre: j.titre || "", auteur: j.auteur || "", editeur: j.editeur || "", annee: j.annee || "", cover: j.cover || "", isbn: j.isbn || isbn, found: !!j.found };
   } catch { return null; }
 }
+
+
+// Récupère une couverture valide via la fonction serverless /api/cover (BnF + Google + OpenLibrary).
+// Renvoie l'URL de la 1ère image réellement valide, ou "" si aucune.
+export async function fetchCover(isbnRaw) {
+  const isbn = cleanIsbn(isbnRaw);
+  if (!isbn) return "";
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
+    const r = await fetch("/api/cover?isbn=" + encodeURIComponent(isbn), { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!r.ok) return "";
+    const j = await r.json();
+    return (j && j.cover) ? j.cover : "";
+  } catch { return ""; }
+}

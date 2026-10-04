@@ -32,6 +32,7 @@ export default function TinderMode({ books, refCatalog, onCommit, onAddMany, onC
     else if (dx < -90) commit("retirer");
     else if (dy < -90) commit("veux");
     else if (dy > 90) openSuggest();
+    else if (Math.abs(dx) < 10 && Math.abs(dy) < 10) openSuggest(); // clic simple (pas de glissé) -> complétion
     else setDrag({ dx: 0, dy: 0, active: false });
   }
 
@@ -68,7 +69,7 @@ export default function TinderMode({ books, refCatalog, onCommit, onAddMany, onC
                 onTouchStart={isTop ? (e => onDown(e.touches[0].clientX, e.touches[0].clientY)) : undefined}
                 onTouchMove={isTop ? (e => { onMove(e.touches[0].clientX, e.touches[0].clientY); if (drag.active) e.preventDefault(); }) : undefined}
                 onTouchEnd={isTop ? onUp : undefined}>
-                <div className="tinder-cover">{b.cover ? <img src={b.cover} alt="" draggable="false" onError={e => e.target.style.display = "none"} /> : <div className="tinder-fallback">📕<br />{b.titre}</div>}</div>
+                <div className="tinder-cover"><CoverOrFallback book={b} /></div>
                 <div className="tinder-info">
                   {b.serie && <div className="tinder-serie">{b.serie}{b.tome ? " · T." + b.tome : ""}</div>}
                   <div className="tinder-title">{b.titre}</div>
@@ -103,6 +104,21 @@ export default function TinderMode({ books, refCatalog, onCommit, onAddMany, onC
             setSuggestFor(null);
           }} />
       )}
+    </div>
+  );
+}
+
+// Affiche la couverture ou un placeholder "Image non trouvée" (clic => complétion via onUp parent)
+function CoverOrFallback({ book }) {
+  const [err, setErr] = React.useState(false);
+  if (book.cover && !err) {
+    return <img src={book.cover} alt="" draggable="false" onError={() => setErr(true)} />;
+  }
+  return (
+    <div className="tinder-nocover">
+      <span className="tinder-nocover-icon">🖼️</span>
+      <span className="tinder-nocover-text">Image non trouvée</span>
+      <span className="tinder-nocover-hint">Touchez la carte pour compléter</span>
     </div>
   );
 }

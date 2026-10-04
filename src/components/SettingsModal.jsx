@@ -1,7 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 
 // Paramètres : gestion de la liste noire (séries / albums à ne plus proposer)
-export default function SettingsModal({ blacklist, onUnblacklistSerie, onUnblacklistAlbum, onClose }) {
+export default function SettingsModal({ blacklist, onUnblacklistSerie, onUnblacklistAlbum, onRefreshCovers, onClose }) {
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [coverMsg, setCoverMsg] = useState("");
+  async function runRefreshCovers() {
+    if (coverBusy || !onRefreshCovers) return;
+    setCoverBusy(true); setCoverMsg("Préparation…");
+    try {
+      const res = await onRefreshCovers((i, total, titre) => setCoverMsg("Couverture " + i + "/" + total + " — " + (titre || "")));
+      setCoverMsg("✅ Terminé : " + (res?.updated ?? 0) + " couverture(s) mise(s) à jour sur " + (res?.total ?? 0) + " album(s).");
+    } catch { setCoverMsg("⚠️ Erreur pendant la récupération."); }
+    setCoverBusy(false);
+  }
   const bl = blacklist || { series: [], albums: [] };
   const series = bl.series || [], albums = bl.albums || [];
   const fmtDate = (t) => t ? new Date(t).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "";
@@ -11,6 +22,13 @@ export default function SettingsModal({ blacklist, onUnblacklistSerie, onUnblack
       <div className="modal" style={{ maxWidth: 620, maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
         <div className="modal-header"><h2>⚙️ Paramètres</h2><button className="modal-close" onClick={onClose}>✕</button></div>
         <div className="modal-body" style={{ overflowY: "auto" }}>
+          <section className="settings-section">
+            <h3>🖼️ Couvertures</h3>
+            <p className="settings-empty">Récupère une couverture (BnF, Google Books, Open Library) pour tous les albums ayant un ISBN. Les couvertures existantes valides ne sont écrasées que si une meilleure est trouvée.</p>
+            <button className="btn btn-primary" disabled={coverBusy} onClick={runRefreshCovers}>{coverBusy ? "⏳ En cours…" : "🖼️ Récupérer les couvertures manquantes"}</button>
+            {coverMsg && <div className="settings-cover-msg">{coverMsg}</div>}
+          </section>
+
           <section className="settings-section">
             <h3>⛔ Séries à ne plus proposer <span className="settings-count">{series.length}</span></h3>
             {series.length === 0

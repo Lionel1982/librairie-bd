@@ -885,3 +885,11 @@ select:focus { outline: none; border-color: var(--accent); }
 .tinder-empty-title { font-size: 24px; font-weight: 700; color: var(--text, #e8e8f0); }
 .tinder-empty-sub { font-size: 15px; color: var(--text-dim, #9a9ab0); line-height: 1.5; }
 .tinder-empty-btn { margin-top: 10px; padding: 14px 32px; font-size: 16px; }
+
+
+/* ===== Placeholder "Image non trouvée" (carte Tinder) ===== */
+.tinder-nocover { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text-dim, #9a9ab0); text-align: center; padding: 20px; cursor: pointer; }
+.tinder-nocover-icon { font-size: 48px; opacity: .5; }
+.tinder-nocover-text { font-size: 16px; font-weight: 600; }
+.tinder-nocover-hint { font-size: 12px; opacity: .8; }
+.settings-cover-msg { margin-top: 10px; font-size: 13px; color: var(--text, #e8e8f0); background: var(--surface-2, #1a1a24); border: 1px solid var(--border, #2a2a3a); border-radius: 8px; padding: 8px 12px; }

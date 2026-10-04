@@ -98,12 +98,34 @@ export function useLibrary(userId) {
     }
   }, []);
 
+  // Nettoyage des couvertures : pour TOUS les albums ayant un ISBN, récupère une
+  // couverture valide (BnF -> Google -> OpenLibrary) via /api/cover. onProgress(i,total,titre).
+  const refreshCoversBnF = useCallback(async (onProgress) => {
+    let targets = [];
+    setBooks(bs => { targets = bs.filter(b => (b.isbn && String(b.isbn).replace(/[^0-9Xx]/g, "").length >= 10)); return bs; });
+    let updated = 0;
+    for (let i = 0; i < targets.length; i++) {
+      const b = targets[i];
+      if (onProgress) onProgress(i + 1, targets.length, b.titre || b.isbn);
+      try {
+        const cover = await API.fetchCover(b.isbn);
+        if (cover && cover !== b.cover) {
+          setBooks(bs => bs.map(x => x.id === b.id ? { ...x, cover, _coverOk: true } : x));
+          await DB.updateBook(b.id, { cover, _coverOk: true });
+          updated++;
+        }
+      } catch {}
+      await new Promise(r => setTimeout(r, 60));
+    }
+    return { updated, total: targets.length };
+  }, []);
+
   return {
     books, refCatalog, seriesMeta, blacklist, loading,
     setBooks, // exposé pour cas particuliers
     addBook, addBooksBulk, editBook, removeBook,
     replaceCatalog, setSerieMeta,
     addBlSerie, addBlAlbum, removeBlSerie, removeBlAlbum,
-    enrichCovers,
+    enrichCovers, refreshCoversBnF,
   };
 }
