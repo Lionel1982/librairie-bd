@@ -20,6 +20,18 @@ export default function SettingsModal({ blacklist, onUnblacklistSerie, onUnblack
     } catch { setCoverMsg("⚠️ Erreur pendant la récupération."); }
     setCoverBusy(false);
   }
+  async function hardRefresh() {
+    try {
+      // 1) vider tous les caches (service worker PWA)
+      if (window.caches && caches.keys) { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); }
+      // 2) désinscrire les service workers pour forcer la récupération du code à jour
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+        const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister()));
+      }
+    } catch {}
+    // 3) reload complet (re-télécharge le code ET refait un fetch Supabase propre)
+    window.location.reload();
+  }
   async function runCleanup() {
     if (!onCleanupJunk) return;
     setJunkMsg("Nettoyage…");
@@ -64,6 +76,11 @@ export default function SettingsModal({ blacklist, onUnblacklistSerie, onUnblack
               <button className="settings-row" onClick={() => setScreen("cleanup")}>
                 <span className="settings-row-ico">🧹</span>
                 <span className="settings-row-txt"><b>Nettoyage</b><small>Supprimer les entrées parasites</small></span>
+                <span className="settings-row-arrow">›</span>
+              </button>
+              <button className="settings-row" onClick={hardRefresh}>
+                <span className="settings-row-ico">🔄</span>
+                <span className="settings-row-txt"><b>Rafraîchir</b><small>Vider le cache et recharger (tél + PC)</small></span>
                 <span className="settings-row-arrow">›</span>
               </button>
             </div>

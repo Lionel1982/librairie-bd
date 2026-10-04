@@ -108,20 +108,20 @@ export function useLibrary(userId) {
   // Supprime les entrées parasites (lignes d'exemple/template importées par erreur :
   // "Serie — T.TypeObjet — Descriptif", "Revue — T.Num — Titre", "Largeur / Profondeur"...).
   const cleanupJunk = useCallback(async () => {
-    // Règle : supprime une entrée si elle n\u2019a NI titre réel NI ISBN (déchet inexploitable).
-    let targets = [];
-    setBooks(bs => {
-      targets = bs.filter(b => {
-        const titre = (b.titre || "").trim();
-        const titreReel = titre && !/^ISBN\s/i.test(titre); // "ISBN 978..." ne compte pas comme un vrai titre
-        const isbnClean = String(b.isbn || "").replace(/[^0-9Xx]/g, "");
-        const hasIsbn = isbnClean.length >= 10;
-        // Règle : une BD est un déchet si elle n'a NI titre réel NI ISBN
-        // (la couverture/série/auteur seuls ne suffisent pas à l'identifier).
-        return !titreReel && !hasIsbn;
-      });
-      return bs;
+    // D'abord : re-fetch frais depuis Supabase (évite d'agir sur un cache local périmé).
+    let fresh = [];
+    try { fresh = await DB.fetchBooks(); setBooks(fresh); }
+    catch { setBooks(bs => { fresh = bs; return bs; }); }
+    // Règle : supprime une entrée si elle n'a NI titre réel NI ISBN (déchet inexploitable).
+    let targets = fresh.filter(b => {
+      const titre = (b.titre || "").trim();
+      const titreReel = titre && !/^ISBN\s/i.test(titre);
+      const isbnClean = String(b.isbn || "").replace(/[^0-9Xx]/g, "");
+      const hasIsbn = isbnClean.length >= 10;
+      return !titreReel && !hasIsbn;
     });
+    // (targets déjà calculé ci-dessus)
+
     let removed = 0, failed = 0, lastErr = "";
     for (const b of targets) {
       setBooks(bs => bs.filter(x => x.id !== b.id));
