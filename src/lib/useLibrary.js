@@ -105,9 +105,17 @@ export function useLibrary(userId) {
     let targets = [];
     setBooks(bs => {
       targets = bs.filter(b => {
-        const hay = (b.serie || "") + " " + (b.titre || "");
-        const noIsbn = !b.isbn || String(b.isbn).replace(/[^0-9Xx]/g, "").length < 10;
-        return junkRe.test(hay) && noIsbn;
+        const titre = (b.titre || "").trim();
+        const serie = (b.serie || "").trim();
+        const isbnClean = String(b.isbn || "").replace(/[^0-9Xx]/g, "");
+        const noIsbn = isbnClean.length < 10;
+        const hay = serie + " " + titre;
+        // (a) motif template parasite sans ISBN
+        if (junkRe.test(hay) && noIsbn) return true;
+        // (b) entrée vide de sens : pas de titre réel ET pas de série ET pas d'ISBN
+        const titreVide = !titre || /^ISBN\s/i.test(titre);
+        if (titreVide && !serie && noIsbn) return true;
+        return false;
       });
       return bs;
     });

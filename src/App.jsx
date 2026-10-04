@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.5.0-supabase";
+const APP_VERSION = "3.6.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -53,6 +53,14 @@ function LibraryApp({ user }) {
 
   const notify = (m) => setToast(m);
   const pending = useMemo(() => books.filter(b => b.statut === "a-confirmer").length, [books]);
+
+  // Nettoyage automatique des entrées parasites/vides au chargement (une fois)
+  const cleanedRef = useRef(false);
+  useEffect(() => {
+    if (loading || cleanedRef.current || !books.length) return;
+    cleanedRef.current = true;
+    lib.cleanupJunk().then((r) => { if (r && r.removed) notify("🧹 " + r.removed + " entrée(s) vide(s) nettoyée(s)"); }).catch(() => {});
+  }, [loading]); // eslint-disable-line
 
   // Déclenchement auto de l'assistant de complétion au 1er lancement du mois (par utilisateur)
   useEffect(() => {

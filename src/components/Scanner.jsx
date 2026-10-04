@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { createScanEngine, isValidBookEAN } from "../lib/scanner.js";
 import { lookupByISBN, lookupByISBNRemote } from "../lib/api.js";
+import { catalogLookup, catalogUpsert } from "../lib/db.js";
 import { cleanIsbn, isbnVariants, lookupInCatalog } from "../lib/store.js";
 
 // Scanner code-barre — mode "scan en lot puis complétion".
@@ -63,9 +64,13 @@ export default function Scanner({ onAddMany, refCatalog = [], onClose }) {
     for (let i = 0; i < list.length; i++) {
       const isbn = list[i];
       setProgress("Complétion " + (i + 1) + "/" + list.length + " — " + isbn + "…");
-      let info = lookupInCatalog(refCatalog, isbn) || {};   // 1) catalogue BDGest local (instantané, BD FR)
-      if (!info.titre) { try { const r = await lookupByISBNRemote(isbn); if (r && r.titre) info = r; else if (r && r.cover && !info.cover) info = { ...info, cover: r.cover }; } catch {} } // 2) /api/isbn (serveur multi-sources, BD FR)
-      if (!info.titre) { try { const web = await lookupByISBN(isbn); if (web && web.titre) info = web; } catch {} } // 3) API client direct (dernier secours)
+      let info = lookupInCatalog(refCatalog, isbn) || {};   // 1) catalogue BDGest local (instantané)
+      let fromWeb = false;
+      if (!info.titre) { try { const shared = await catalogLookup(isbn); if (shared && shared.titre) info = shared; } catch {} } // 2) catalogue COMMUN partagé (Supabase)
+      if (!info.titre) { try { const r = await lookupByISBNRemote(isbn); if (r && r.titre) { info = r; fromWeb = true; } else if (r && r.cover && !info.cover) info = { ...info, cover: r.cover }; } catch {} } // 3) /api/isbn (serveur multi-sources)
+      if (!info.titre) { try { const web = await lookupByISBN(isbn); if (web && web.titre) { info = web; fromWeb = true; } } catch {} } // 4) API client direct (dernier secours)
+      // alimente le catalogue COMMUN pour que tous en profitent (si résolu via le web)
+      if (fromWeb && info.titre) { try { await catalogUpsert(isbn, { ...info, source: info.source || "scan" }); } catch {} }
       const variants = isbnVariants(isbn);
       const cover = info.cover || (variants[0] ? "https://covers.openlibrary.org/b/isbn/" + (variants.find(v => v.length === 13) || variants[0]) + "-L.jpg" : "");
       books.push({

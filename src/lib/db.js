@@ -135,3 +135,38 @@ export async function removeBlacklist(kind, key) {
   if (error) { console.warn("removeBlacklist", error); return false; }
   return true;
 }
+
+
+// ---------- CATALOGUE COMMUN PARTAGÉ (bd_catalog, par ISBN, lisible par tous) ----------
+import { cleanIsbn, isbnVariants } from "./store.js";
+
+function isbn13Of(isbnRaw) {
+  const vs = isbnVariants(cleanIsbn(isbnRaw));
+  return vs.find(v => v.length === 13) || vs[0] || "";
+}
+
+// Cherche une fiche partagée par ISBN (lecture publique). Renvoie {titre,serie,tome,auteur,editeur,annee,cover} ou null.
+export async function catalogLookup(isbnRaw) {
+  const isbn = isbn13Of(isbnRaw);
+  if (!isbn) return null;
+  const { data, error } = await supabase.from("bd_catalog").select("*").eq("isbn", isbn).limit(1).maybeSingle();
+  if (error || !data) return null;
+  return { titre: data.titre || "", serie: data.serie || "", tome: data.tome == null ? "" : data.tome,
+    auteur: data.auteur || "", editeur: data.editeur || "", annee: data.annee || "", cover: data.cover || "", source: data.source || "catalog" };
+}
+
+// Enregistre/complète une fiche partagée (upsert). Ne vide jamais un champ déjà rempli côté base
+// (on envoie seulement les champs non vides). Silencieux en cas d'erreur.
+export async function catalogUpsert(isbnRaw, info) {
+  const isbn = isbn13Of(isbnRaw);
+  if (!isbn || !info) return false;
+  const userId = await uid();
+  const row = { isbn };
+  ["titre","serie","auteur","editeur","annee","cover","source"].forEach(k => { if (info[k]) row[k] = info[k]; });
+  if (info.tome !== undefined && info.tome !== "" && info.tome !== null) row.tome = Number(info.tome);
+  if (userId) row.updated_by = userId;
+  if (Object.keys(row).length <= 1) return false; // rien à écrire
+  const { error } = await supabase.from("bd_catalog").upsert(row, { onConflict: "isbn" });
+  if (error) { console.warn("catalogUpsert", error); return false; }
+  return true;
+}
