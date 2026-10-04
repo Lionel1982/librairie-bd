@@ -88,21 +88,60 @@ function decodeEntities(s) {
     .replace(/&eacute;/g, "é").replace(/&egrave;/g, "è").replace(/&agrave;/g, "à").trim();
 }
 
+// Recherche web (DuckDuckGo HTML, sans clé) : renvoie les URLs de résultats pour une requête.
+async function ddgSearch(query) {
+  const html = await fetchText("https://html.duckduckgo.com/html/?q=" + encodeURIComponent(query), 7000);
+  if (!html) return [];
+  const urls = [];
+  // liens de résultats DDG : href="...uddg=<URL encodee>..." OU liens directs result__a
+  const re = /<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"/gi;
+  let m;
+  while ((m = re.exec(html)) !== null && urls.length < 8) {
+    let href = m[1];
+    // DDG encode parfois la vraie URL dans ?uddg=
+    const ud = href.match(/[?&]uddg=([^&]+)/);
+    if (ud) { try { href = decodeURIComponent(ud[1]); } catch {} }
+    if (/^https?:\/\//.test(href)) urls.push(href);
+  }
+  return urls;
+}
+
+// Extrait titre/auteur/editeur/annee/cover d'une page libraire FR (plusieurs methodes).
+function parseLibraireFiche(html) {
+  if (!html) return null;
+  const out = { titre: "", auteur: "", editeur: "", annee: "", cover: "" };
+  // 1) OpenGraph
+  out.cover = metaContent(html, "og:image") || "";
+  let ogt = decodeEntities(metaContent(html, "og:title") || "");
+  // 2) <title> en secours
+  if (!ogt) { const tm = html.match(/<title[^>]*>([^<]+)<\/title>/i); if (tm) ogt = decodeEntities(tm[1]); }
+  // nettoie suffixes " - Furet du Nord", " | Leslibraires", etc.
+  ogt = ogt.replace(/\s*[-|–]\s*(furet.*|leslibraires.*|decitre.*|cultura.*|fnac.*|librairie.*)$/i, "").trim();
+  out.titre = ogt;
+  // 3) champs structurés visibles (Editeur / Date de parution / EAN) dans le texte
+  const ed = html.match(/(?:Editeur|Éditeur|publisher)["'\s:>]*([A-Za-zÀ-ÿ0-9 .&'’-]{2,40})/i);
+  if (ed) out.editeur = decodeEntities(ed[1]).trim();
+  const an = html.match(/(?:Date de parution|parution|publishedDate|datePublished)["'\s:>]*[^\d]{0,8}(\d{4})/i);
+  if (an) out.annee = an[1];
+  // auteur : meta book:author ou "De : X" / "Auteur : X"
+  let au = metaContent(html, "book:author") || "";
+  if (!au) { const am = html.match(/(?:Auteur|De)\s*[:\u202f]\s*([A-Za-zÀ-ÿ .'’-]{3,40})/); if (am) au = am[1]; }
+  out.auteur = decodeEntities(au).trim();
+  return out.titre ? out : null;
+}
+
 async function tryLibrairieFR(isbn) {
-  // Furet du Nord : URL pattern simple et riche en OpenGraph. En secours : Leslibraires.
-  const candidates = [
-    "https://www.furet.com/search?q=" + isbn,
-  ];
-  for (const url of candidates) {
+  // 1) trouver des pages fiches via recherche web (sans clé)
+  let urls = [];
+  try { urls = await ddgSearch(isbn + " BD album"); } catch {}
+  // priorise les libraires FR connus pour avoir des fiches riches
+  const prefer = /(furet\.com|leslibraires|decitre\.fr|cultura\.com|fnac\.com|bdfugue\.com|placedeslibraires)/i;
+  urls.sort((a, b) => (prefer.test(b) ? 1 : 0) - (prefer.test(a) ? 1 : 0));
+  for (const url of urls.slice(0, 4)) {
+    if (!/^https:\/\//.test(url)) continue;
     const html = await fetchText(url, 7000);
-    if (!html) continue;
-    let title = decodeEntities(metaContent(html, "og:title"));
-    const image = metaContent(html, "og:image");
-    if (title && !/furet|recherche|search|404|erreur/i.test(title)) {
-      // nettoie le suffixe " - Furet..." éventuel
-      title = title.replace(/\s*[-|]\s*(furet.*|leslibraires.*)$/i, "").trim();
-      return { titre: title, auteur: "", editeur: "", annee: "", cover: image || "", source: "furet" };
-    }
+    const parsed = parseLibraireFiche(html);
+    if (parsed && parsed.titre && parsed.titre.length > 2) { parsed.source = "libraire:" + (url.match(/https:\/\/(?:www\.)?([^\/]+)/) || [,""])[1]; return parsed; }
   }
   return null;
 }
