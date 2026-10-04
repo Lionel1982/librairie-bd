@@ -67,7 +67,7 @@ export default function SeriesView({ books, seriesMeta, setSeriesMeta, onSetSeri
                 </div>
               </div>
               <div className="series-covers">
-                {items.map(b => <div className="series-cover" key={b.id} title={b.titre} onClick={() => onOpen(b.id)}><Cover src={b.cover} title={b.titre} />{b.tome ? <span className="series-tome">T.{b.tome}</span> : null}</div>)}
+                {items.map(b => <div className="series-cover" key={b.id} title={b.titre} onClick={() => onOpen(b.id)}><Cover src={b.cover} title={b.titre} isbn={b.isbn} />{b.tome ? <span className="series-tome">T.{b.tome}</span> : null}</div>)}
               </div>
             </div>
           );

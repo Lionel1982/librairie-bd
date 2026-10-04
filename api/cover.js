@@ -69,9 +69,9 @@ async function googleCover(isbn) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Cache-Control", "s-maxage=604800, stale-while-revalidate");
-  const isbn = clean((req.query && req.query.isbn) || "");
+  const q = req.query || {};
+  const wantImg = q.img === "1";              // ?img=1 -> redirige vers l'image (utilisable dans <img src>)
+  const isbn = clean(q.isbn || "");
   if (!isbn || (isbn.length !== 13 && isbn.length !== 10)) {
     return res.status(400).json({ error: "ISBN invalide", isbn });
   }
@@ -87,7 +87,13 @@ export default async function handler(req, res) {
   for (const v of vs) { candidates.push("https://covers.openlibrary.org/b/isbn/" + v + "-L.jpg"); }
 
   for (const url of candidates) {
-    if (await imageOk(url)) return res.status(200).json({ found: true, isbn: isbn13, cover: url });
+    if (await imageOk(url)) {
+      res.setHeader("Cache-Control", "public, s-maxage=604800, stale-while-revalidate=86400");
+      if (wantImg) { res.setHeader("Location", url); return res.status(302).end(); }
+      return res.status(200).json({ found: true, isbn: isbn13, cover: url });
+    }
   }
+  res.setHeader("Cache-Control", "public, s-maxage=86400");
+  if (wantImg) return res.status(404).end();
   return res.status(200).json({ found: false, isbn: isbn13, cover: "" });
 }

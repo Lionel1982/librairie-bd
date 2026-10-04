@@ -254,7 +254,6 @@ async function tryISBNdb(isbn) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate");
   const raw = (req.query && req.query.isbn) || "";
   const isbn = clean(raw);
@@ -284,10 +283,9 @@ export default async function handler(req, res) {
 
   if (!result || !result.titre) {
     // au moins une couverture OpenLibrary par défaut
-    return res.status(200).json({ found: false, isbn: isbn13, titre: "", auteur: "", editeur: "", annee: "", cover: "https://covers.openlibrary.org/b/isbn/" + isbn13 + "-L.jpg" });
+    return res.status(200).json({ found: false, isbn: isbn13, titre: "", auteur: "", editeur: "", annee: "", cover: "" });
   }
   // couverture de secours si absente
-  if (!result.cover) result.cover = "https://covers.openlibrary.org/b/isbn/" + isbn13 + "-L.jpg";
   result.found = true; result.isbn = isbn13;
   return res.status(200).json(result);
 }

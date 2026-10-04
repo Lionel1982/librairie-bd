@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { uid, cleanIsbn, extractTome } from "../lib/store.js";
+import { uid, extractTome, getScanDirect, setScanDirect } from "../lib/store.js";
 import { searchCandidates } from "../lib/api.js";
+import SmartThumb from "./SmartThumb.jsx";
 
 export default function FindModal({ books, refCatalog, onAdd, onScan, onClose }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState([]);
   const [checked, setChecked] = useState(new Set());
   const [statut, setStatut] = useState("jai");
+  const [scanDirect, setScanDirectState] = useState(getScanDirect());
   const [status, setStatus] = useState("Tape un titre, une série, un auteur ou un ISBN.");
 
   async function search() {
@@ -23,7 +25,7 @@ export default function FindModal({ books, refCatalog, onAdd, onScan, onClose })
       return { id: uid(), createdAt: Date.now() - k, statut, note: 0, commentaire: "Ajouté via recherche",
         titre: c.titre + (c.sousTitre ? " — " + c.sousTitre : ""), serie: "", tome: extractTome(c.titre + " " + (c.sousTitre || "")),
         auteur: c.auteur || "", editeur: c.editeur || "", annee: c.annee ? parseInt(c.annee) : "", isbn: c.isbn || "",
-        cover: c.cover || (c.isbn ? "https://covers.openlibrary.org/b/isbn/" + cleanIsbn(c.isbn) + "-L.jpg" : ""), _coverOk: false };
+        cover: c.cover || "", _coverOk: false };   // couverture vérifiée/complétée après ajout
     });
     if (items.length) onAdd(items);
   }
@@ -42,14 +44,17 @@ export default function FindModal({ books, refCatalog, onAdd, onScan, onClose })
         <button className="find-scan-btn" onClick={() => { onClose(); if (onScan) onScan(); }}>
           📷 Scanner un code-barre
         </button>
+        <label className="scan-direct">
+          <input type="checkbox" checked={scanDirect} onChange={e => { setScanDirectState(e.target.checked); setScanDirect(e.target.checked); }} />
+          <span>Scan : ajouter directement à ma collection <small>(sinon « à trier »)</small></span>
+        </label>
         <div className="find-status">{status}</div>
         <div className="find-list">
           {results.map((c, i) => {
-            let coverUrl = c.cover || (c.isbn ? "https://covers.openlibrary.org/b/isbn/" + cleanIsbn(c.isbn) + "-M.jpg" : "");
             return (
               <label className="suggest-item" key={i}>
                 <input type="checkbox" className="find-check" checked={checked.has(i)} onChange={() => toggle(i)} />
-                <div className="suggest-cover">{coverUrl ? <img src={coverUrl} alt="" loading="lazy" onError={e => { e.target.style.display = "none"; }} /> : <div className="suggest-nocover">📕</div>}</div>
+                <div className="suggest-cover"><SmartThumb isbn={c.isbn} cover={c.cover} fallback={<div className="suggest-nocover">📕</div>} /></div>
                 <div className="suggest-info">
                   <div className="suggest-title">{c.titre}{c.sousTitre ? " — " + c.sousTitre : ""}</div>
                   {c.auteur && <div className="suggest-meta">{c.auteur}</div>}

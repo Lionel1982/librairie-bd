@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { OWNED, STATUS_LABELS, amazonUrl, cleanIsbn, extractTome } from "../lib/store.js";
 import { lookupByISBN, lookupByISBNRemote, searchCandidates } from "../lib/api.js";
 import CoverPicker from "./CoverPicker.jsx";

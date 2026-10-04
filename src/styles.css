@@ -1052,3 +1052,25 @@ select:focus { outline: none; border-color: var(--accent); }
   .topbar-actions .action-label { display: none; }
   .topbar-actions .action-tile { min-height: 52px; }
 }
+
+
+/* ===== v3.15 : pastille « à trier », case scan direct, bouton couverture du tri ===== */
+.topbar-actions .action-tile { position: relative; }
+.action-badge {
+  position: absolute; top: 4px; right: 4px; z-index: 2; pointer-events: none;
+  min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px;
+  background: #ff3b5c; color: #fff; font-size: 12px; font-weight: 800; line-height: 22px; text-align: center;
+  box-shadow: 0 0 0 2px var(--bg, #0b0b10); animation: badge-pulse 2.4s ease-in-out infinite;
+}
+@keyframes badge-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+.app-scrolled .action-badge { top: -6px; right: -6px; min-width: 18px; height: 18px; line-height: 18px; font-size: 11px; padding: 0 5px; }
+.scan-direct {
+  display: flex; align-items: center; gap: 10px; margin: 8px 0; padding: 10px 12px;
+  border: 1px solid #2c2c3a; border-radius: 12px; background: rgba(124,92,255,.08);
+  font-size: 14px; cursor: pointer; user-select: none;
+}
+.scan-direct input { width: 20px; height: 20px; accent-color: #7c5cff; flex: 0 0 auto; }
+.scan-direct small { color: var(--text-dim, #9a9ab0); }
+.scanner-overlay .scan-direct { margin: 8px 12px; color: #fff; }
+.tinder-btn.tb-cover { background: #2a2a3a; }
+.suggest-cover img, .card-cover img { object-fit: cover; }

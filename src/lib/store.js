@@ -1,23 +1,13 @@
-// Couche données : persistance localStorage + helpers (portée depuis l'app v1.26 éprouvée)
-const STORAGE_KEY = "bd-library-v1";
-const REFCAT_KEY = "bd-library-refcat-v1";
-const SERIES_META_KEY = "bd-library-series-meta-v1";
-const BLACKLIST_KEY = "bd-library-blacklist-v1";
+// Helpers purs (ISBN, titres, doublons, liste noire…) — la persistance est dans db.js (Supabase)
 export const OWNED = ["jai", "lu", "en-cours", "a-lire"];
-export const STATUS_LABELS = { "a-lire": "À lire", "en-cours": "En cours", "lu": "Lu", "jai": "J'ai", "veux": "Je veux", "a-confirmer": "À confirmer" };
+export const STATUS_LABELS = { "a-lire": "À lire", "en-cours": "En cours", "lu": "Lu", "jai": "J’ai", "veux": "Je veux", "a-confirmer": "À confirmer" };
 
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
-export function loadBooks() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; }
-}
-export function saveBooks(books) { localStorage.setItem(STORAGE_KEY, JSON.stringify(books)); }
-
-export function loadRefCatalog() { try { return JSON.parse(localStorage.getItem(REFCAT_KEY) || "[]"); } catch { return []; } }
-export function saveRefCatalog(cat) { localStorage.setItem(REFCAT_KEY, JSON.stringify(cat)); }
-
-export function loadSeriesMeta() { try { return JSON.parse(localStorage.getItem(SERIES_META_KEY) || "{}"); } catch { return {}; } }
-export function saveSeriesMeta(m) { localStorage.setItem(SERIES_META_KEY, JSON.stringify(m)); }
+// Préférence (par appareil) : un scan ajoute directement à la collection au lieu de « à trier »
+const SCAN_DIRECT_KEY = "bdlib-scan-direct";
+export function getScanDirect() { try { return localStorage.getItem(SCAN_DIRECT_KEY) === "1"; } catch { return false; } }
+export function setScanDirect(v) { try { localStorage.setItem(SCAN_DIRECT_KEY, v ? "1" : "0"); } catch {} }
 
 // ---------- Helpers ISBN ----------
 export function cleanIsbn(s) { return String(s || "").replace(/[^0-9Xx]/g, "").toUpperCase(); }
@@ -71,12 +61,6 @@ export function extractTome(s) {
 
 
 // ---------- Liste noire (séries / albums à ne plus proposer) ----------
-export function loadBlacklist() {
-  try { const b = JSON.parse(localStorage.getItem(BLACKLIST_KEY) || "{}"); return { series: b.series || [], albums: b.albums || [] }; }
-  catch { return { series: [], albums: [] }; }
-}
-export function saveBlacklist(bl) { localStorage.setItem(BLACKLIST_KEY, JSON.stringify({ series: bl.series || [], albums: bl.albums || [] })); }
-
 // clé album : ISBN si dispo, sinon titre normalisé + tome
 export function albumKey(a) {
   const isbn = cleanIsbn(a.isbn || "");
@@ -122,4 +106,13 @@ export function lookupInCatalog(refCatalog, isbnRaw) {
     auteur: hit.auteur || "", editeur: hit.editeur || "", annee: hit.annee || "",
     isbn: hit.isbn || variants[0], cover: hit.cover || "",
   };
+}
+
+
+// URL de vignette « meilleure source » (BnF -> Google -> OpenLibrary, validée côté serveur).
+// Utilisable directement dans <img src>. "" si ISBN invalide.
+export function coverThumbUrl(isbnRaw) {
+  const vs = isbnVariants(cleanIsbn(isbnRaw));
+  const i = vs.find(v => v.length === 13) || vs[0] || "";
+  return (i.length === 13 || i.length === 10) ? "/api/cover?img=1&isbn=" + i : "";
 }

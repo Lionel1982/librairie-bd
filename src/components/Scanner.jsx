@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { createScanEngine, isValidBookEAN } from "../lib/scanner.js";
 import { lookupByISBN, lookupByISBNRemote } from "../lib/api.js";
 import { catalogLookup, catalogUpsert } from "../lib/db.js";
-import { cleanIsbn, isbnVariants, lookupInCatalog } from "../lib/store.js";
+import { cleanIsbn, lookupInCatalog, getScanDirect, setScanDirect } from "../lib/store.js";
 
 // Scanner code-barre — mode "scan en lot puis complétion".
 // On accumule les ISBN scannés (fluide, pas de lookup pendant le scan),
@@ -15,6 +15,7 @@ export default function Scanner({ onAddMany, refCatalog = [], onClose }) {
   const [manual, setManual] = useState("");
   const [working, setWorking] = useState(false); // lookup en cours
   const [progress, setProgress] = useState("");
+  const [direct, setDirect] = useState(getScanDirect()); // ajout direct à la collection ?
   const queueRef = useRef([]);
   const lastBeepRef = useRef(0);
 
@@ -71,13 +72,11 @@ export default function Scanner({ onAddMany, refCatalog = [], onClose }) {
       if (!info.titre) { try { const web = await lookupByISBN(isbn); if (web && web.titre) { info = web; fromWeb = true; } } catch {} } // 4) API client direct (dernier secours)
       // alimente le catalogue COMMUN pour que tous en profitent (si résolu via le web)
       if (fromWeb && info.titre) { try { await catalogUpsert(isbn, { ...info, source: info.source || "scan" }); } catch {} }
-      const variants = isbnVariants(isbn);
-      const cover = info.cover || (variants[0] ? "https://covers.openlibrary.org/b/isbn/" + (variants.find(v => v.length === 13) || variants[0]) + "-L.jpg" : "");
       books.push({
-        statut: "a-confirmer", note: 0, commentaire: "Scanné (à confirmer)",
+        statut: direct ? "jai" : "a-confirmer", note: 0, commentaire: direct ? "Scanné" : "Scanné (à confirmer)",
         titre: info.titre || ("ISBN " + isbn), serie: "", tome: "",
         auteur: info.auteur || "", editeur: info.editeur || "", annee: info.annee || "",
-        isbn: info.isbn || isbn, cover, _coverOk: !!cover,
+        isbn: info.isbn || isbn, cover: info.cover || "", _coverOk: false, // vérifiée/complétée après ajout
       });
     }
     onAddMany(books);   // App gère l'insert Supabase + dédoublonnage + toast
@@ -103,6 +102,11 @@ export default function Scanner({ onAddMany, refCatalog = [], onClose }) {
           <button className="btn btn-ghost" onClick={addManual}>+ Ajouter</button>
         </div>
 
+        <label className="scan-direct">
+          <input type="checkbox" checked={direct} onChange={e => { setDirect(e.target.checked); setScanDirect(e.target.checked); }} />
+          <span>Ajouter directement à ma collection <small>(sinon « à trier »)</small></span>
+        </label>
+
         {queue.length > 0 && (
           <div className="scan-queue">
             <div className="scan-queue-head">{queue.length} code(s) scanné(s)</div>
@@ -120,7 +124,7 @@ export default function Scanner({ onAddMany, refCatalog = [], onClose }) {
             ✓ Ajouter les {queue.length || ""}
           </button>
         </div>
-        <p className="scanner-hint">Scanne plusieurs BD à la suite, puis « Ajouter ». Elles arrivent en « à confirmer » (🔥 Trier). Seuls les ISBN livre (978/979) sont acceptés.</p>
+        <p className="scanner-hint">Scanne plusieurs BD à la suite, puis « Ajouter ». {direct ? "Elles vont directement dans ta collection." : "Elles arrivent dans 🔥 Trier."} Seuls les ISBN livre (978/979) sont acceptés.</p>
       </>) : (
         <div className="scanner-working">
           <div className="scanner-spinner">⏳</div>

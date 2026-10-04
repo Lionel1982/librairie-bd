@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.14.0-supabase";
+const APP_VERSION = "3.15.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -54,6 +54,10 @@ function LibraryApp({ user }) {
 
   const notify = (m) => setToast(m);
   const pending = useMemo(() => books.filter(b => b.statut === "a-confirmer").length, [books]);
+  // listes filtrées mémorisées (évite de tout recalculer à chaque rendu)
+  const ownedBooks = useMemo(() => books.filter(b => S.OWNED.includes(b.statut)), [books]);
+  const wishBooks = useMemo(() => books.filter(b => b.statut === "veux"), [books]);
+  const libBooks = useMemo(() => books.filter(S.inLibrary), [books]);
 
   // Déclenchement auto de l'assistant de complétion au 1er lancement du mois (par utilisateur)
   useEffect(() => {
@@ -75,7 +79,8 @@ function LibraryApp({ user }) {
     try {
       const saved = toAdd.length ? await lib.addBooksBulk(toAdd) : [];
       if (saved.length) setTimeout(() => lib.enrichCovers(saved.map(s => s.id)), 300);
-      let msg = "📷 " + saved.length + " album(s) scanné(s) ajouté(s)";
+      const toSort = saved.filter(s => s.statut === "a-confirmer").length;
+      let msg = "📷 " + saved.length + " album(s) ajouté(s)" + (toSort ? " → 🔥 à trier" : " à ta collection");
       if (skipped) msg += " · " + skipped + " doublon(s) ignoré(s)";
       notify(msg);
     } catch (err) {
@@ -232,8 +237,9 @@ function LibraryApp({ user }) {
             <button className="action-tile action-primary" title="Chercher un album" onClick={() => setFindOpen(true)}>
               <span className="action-icon">🔎</span><span className="action-label">Chercher</span>
             </button>
-            <button className={"action-tile" + (pending ? " action-pending" : "")} title="Trier" onClick={() => setTinderOpen(true)}>
-              <span className="action-icon">🔥</span><span className="action-label">Trier{pending ? " (" + pending + ")" : ""}</span>
+            <button className={"action-tile" + (pending ? " action-pending" : "")} title={pending ? pending + " album(s) à trier" : "Trier"} onClick={() => setTinderOpen(true)}>
+              <span className="action-icon">🔥</span><span className="action-label">Trier</span>
+              {pending > 0 && <span className="action-badge">{pending > 99 ? "99+" : pending}</span>}
             </button>
             <button className="action-tile" title="Compléter" onClick={() => setPlanOpen(true)}>
               <span className="action-icon">🎯</span><span className="action-label">Compléter</span>
@@ -261,12 +267,12 @@ function LibraryApp({ user }) {
       )}
 
       <main className="library">
-        {viewMode === "biblio" && <LibraryGrid books={books.filter(b => S.OWNED.includes(b.statut))} query={query} onOpen={setEditingId} />}
-        {viewMode === "wishlist" && <LibraryGrid books={books.filter(b => b.statut === "veux")} query={query} onOpen={setEditingId} wishlist />}
-        {viewMode === "series" && <SeriesView books={books.filter(S.inLibrary)} seriesMeta={seriesMeta} onSetSerieMeta={(key, meta) => lib.setSerieMeta(key, meta)} query={query} blacklist={blacklist} onOpen={setEditingId} />}
-        {viewMode === "etagere" && <ShelfView books={books.filter(S.inLibrary)} query={query} onOpen={setEditingId} />}
-        {viewMode === "trous" && <GapsView books={books.filter(S.inLibrary)} seriesMeta={seriesMeta} query={query} blacklist={blacklist} onAddWish={addGapWish} onBlacklistSerie={blSerie} onBlacklistAlbum={blAlbum} />}
-        {viewMode === "stats" && <StatsView books={books.filter(S.inLibrary)} seriesMeta={seriesMeta} />}
+        {viewMode === "biblio" && <LibraryGrid books={ownedBooks} query={query} onOpen={setEditingId} />}
+        {viewMode === "wishlist" && <LibraryGrid books={wishBooks} query={query} onOpen={setEditingId} wishlist />}
+        {viewMode === "series" && <SeriesView books={libBooks} seriesMeta={seriesMeta} onSetSerieMeta={(key, meta) => lib.setSerieMeta(key, meta)} query={query} blacklist={blacklist} onOpen={setEditingId} />}
+        {viewMode === "etagere" && <ShelfView books={libBooks} query={query} onOpen={setEditingId} />}
+        {viewMode === "trous" && <GapsView books={libBooks} seriesMeta={seriesMeta} query={query} blacklist={blacklist} onAddWish={addGapWish} onBlacklistSerie={blSerie} onBlacklistAlbum={blAlbum} />}
+        {viewMode === "stats" && <StatsView books={libBooks} seriesMeta={seriesMeta} />}
       </main>
 
       {editingId !== undefined && (
@@ -283,10 +289,11 @@ function LibraryApp({ user }) {
       {tinderOpen && (
         <TinderMode books={books} refCatalog={refCatalog}
           onCommit={tinderCommit} onAddMany={tinderAddMany}
+          onSetCover={(id, url) => lib.editBook(id, { cover: url, _coverOk: true }).then(() => notify("🖼️ Couverture enregistrée")).catch(e => notify("❌ Couverture non enregistrée : " + (e?.message || "erreur")))}
           onClose={() => setTinderOpen(false)} />
       )}
       {planOpen && (
-        <MonthlyPlan books={books.filter(S.inLibrary)} seriesMeta={seriesMeta} blacklist={blacklist}
+        <MonthlyPlan books={libBooks} seriesMeta={seriesMeta} blacklist={blacklist}
           onAddWish={addGapWish} onBlacklistSerie={blSerie} onBlacklistAlbum={blAlbum} onClose={() => setPlanOpen(false)} />
       )}
       {scanOpen && (

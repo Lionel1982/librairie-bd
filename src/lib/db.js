@@ -52,9 +52,11 @@ function patchToRow(patch) {
   return row;
 }
 
+// id de l'utilisateur connecté, lu dans la session locale (pas d'aller-retour réseau).
+// La sécurité reste garantie côté serveur par les règles RLS.
 async function uid() {
-  const { data } = await supabase.auth.getUser();
-  return data?.user?.id || null;
+  const { data } = await supabase.auth.getSession();
+  return data?.session?.user?.id || null;
 }
 
 // ---------- BOOKS ----------
@@ -90,20 +92,15 @@ export async function updateBook(id, patch) {
   const { data, error } = await supabase.from("books").update(row).eq("id", id).select();
   if (error) { console.warn("updateBook", error); const e = new Error(error.message || "update refusé"); e._bdlib = true; throw e; }
   if (!data || data.length === 0) {
-    const e = new Error("0 ligne modifiée — session vue=" + (userId || "NULL")); e._bdlib = true; e._zero = true; throw e;
+    const e = new Error("0 ligne modifiée (session expirée ?)"); e._bdlib = true; e._zero = true; throw e;
   }
   return rowToBook(data[0]);
 }
 export async function deleteBook(id) {
-  // DIAGNOSTIC : qui suis-je côté client au moment du delete ?
-  let who = "?";
-  try { const { data: u } = await supabase.auth.getUser(); who = u?.user?.id || "NULL(anon)"; } catch { who = "ERR"; }
-  // .select() permet de savoir combien de lignes ont RÉELLEMENT été supprimées
-  // (RLS peut filtrer sans erreur : 0 ligne supprimée = la ligne revient au refresh).
-  const { data, error } = await supabase.from("books").delete().eq("id", id).select();
-  if (error) { console.warn("deleteBook", error); const e = new Error(error.message || "delete refusé"); e._bdlib = true; throw e; }
-  const n = (data || []).length;
-  if (n === 0) { const e = new Error("0 ligne supprimée — session vue=" + who); e._bdlib = true; e._zero = true; throw e; }
+  // .select() renvoie les lignes réellement supprimées (RLS peut filtrer sans erreur)
+  const { data, error } = await supabase.from("books").delete().eq("id", id).select("id");
+  if (error) { const e = new Error(error.message || "suppression refusée"); e._bdlib = true; throw e; }
+  if (!data || data.length === 0) { const e = new Error("0 ligne supprimée (session expirée ?)"); e._bdlib = true; e._zero = true; throw e; }
   return true;
 }
 

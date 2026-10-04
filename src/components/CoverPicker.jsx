@@ -48,7 +48,7 @@ export default function CoverPicker({ isbn, titre, serie, onPick, onClose }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target.classList.contains("modal-overlay") && onClose()} style={{ zIndex: 1100 }}>
+    <div className="modal-overlay" onClick={e => e.target.classList.contains("modal-overlay") && onClose()} style={{ zIndex: 3000 }}>
       <div className="modal" style={{ maxWidth: 560, maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
         <div className="modal-header"><h2>🖼️ Choisir une couverture</h2><button className="modal-close" onClick={onClose}>✕</button></div>
         <div className="modal-body" style={{ overflowY: "auto" }}>

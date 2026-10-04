@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { OWNED, normTitle, uid, findDuplicate, isSerieBlacklisted, isAlbumBlacklisted } from "../lib/store.js";
+import { OWNED, normTitle, isSerieBlacklisted, isAlbumBlacklisted } from "../lib/store.js";
 import { IconOneTome, IconManyTomes } from "./BlockIcons.jsx";
 
 export default function GapsView({ books, seriesMeta, query, blacklist, onAddWish, onBlacklistSerie, onBlacklistAlbum }) {

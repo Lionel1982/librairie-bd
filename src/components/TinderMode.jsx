@@ -1,12 +1,15 @@
 import React, { useState, useMemo, useRef } from "react";
-import { uid, cleanIsbn, extractTome, findDuplicate } from "../lib/store.js";
+import { uid, extractTome } from "../lib/store.js";
 import { searchCandidates } from "../lib/api.js";
+import SmartThumb from "./SmartThumb.jsx";
+import CoverPicker from "./CoverPicker.jsx";
 
 // Mode Tinder plein écran : swipe pour trancher les "à confirmer"
-export default function TinderMode({ books, refCatalog, onCommit, onAddMany, onClose }) {
+export default function TinderMode({ books, refCatalog, onCommit, onAddMany, onSetCover, onClose }) {
   const queue = useMemo(() => books.filter(b => b.statut === "a-confirmer").map(b => b.id), [books]);
   const [drag, setDrag] = useState({ dx: 0, dy: 0, active: false });
   const [suggestFor, setSuggestFor] = useState(null); // book courant si panneau ouvert
+  const [coverFor, setCoverFor] = useState(null);     // book courant si sélecteur de couverture ouvert
   const startRef = useRef({ x: 0, y: 0 });
   const cardRef = useRef(null);
 
@@ -88,12 +91,18 @@ export default function TinderMode({ books, refCatalog, onCommit, onAddMany, onC
         <div className="tinder-actions">
           <button className="tinder-btn tb-retirer" onClick={() => commit("retirer")} title="Retirer (←)">🗑️</button>
           <button className="tinder-btn tb-suggest" onClick={openSuggest} title="Identifier (↓)">🔍</button>
+          {onSetCover && <button className="tinder-btn tb-cover" onClick={() => setCoverFor(current)} title="Choisir la couverture">🖼️</button>}
           <button className="tinder-btn tb-veux" onClick={() => commit("veux")} title="Je veux (↑)">💜</button>
           <button className="tinder-btn tb-jai" onClick={() => commit("jai")} title="J'ai (→)">✅</button>
         </div>
       )}
       <p className="tinder-legend">← Retirer · ↑ Je veux · ↓ Identifier · → J'ai</p>
 
+      {coverFor && (
+        <CoverPicker isbn={coverFor.isbn} titre={coverFor.titre} serie={coverFor.serie}
+          onPick={(url) => { onSetCover(coverFor.id, url); setCoverFor(null); }}
+          onClose={() => setCoverFor(null)} />
+      )}
       {suggestFor && (
         <SuggestPanel book={suggestFor} books={books} refCatalog={refCatalog}
           onClose={() => setSuggestFor(null)}
@@ -107,20 +116,16 @@ export default function TinderMode({ books, refCatalog, onCommit, onAddMany, onC
   );
 }
 
-// Affiche la couverture ou un placeholder "Image non trouvée" (clic => complétion via onUp parent)
+// Couverture : image enregistrée, sinon meilleure source serveur (BnF…), sinon placeholder
 function CoverOrFallback({ book }) {
-  const [err, setErr] = React.useState(false);
-  React.useEffect(() => { setErr(false); }, [book.cover]);
-  if (book.cover && !err) {
-    return <img src={book.cover} alt="" draggable="false" onError={() => setErr(true)} />;
-  }
-  return (
+  const fallback = (
     <div className="tinder-nocover">
       <span className="tinder-nocover-icon">🖼️</span>
       <span className="tinder-nocover-text">Image non trouvée</span>
-      <span className="tinder-nocover-hint">Touchez la carte pour compléter</span>
+      <span className="tinder-nocover-hint">Bouton 🖼️ pour en choisir une</span>
     </div>
   );
+  return <SmartThumb cover={book.cover} isbn={book.isbn} preferServer={false} fallback={fallback} />;
 }
 
 // Panneau Identifier (multi-sélection) — chaque tome coché = une entrée distincte
@@ -146,7 +151,7 @@ function SuggestPanel({ book, books, refCatalog, onApply, onClose }) {
       return { id: uid(), createdAt: Date.now() - k, statut: "a-confirmer", note: 0, commentaire: "Ajouté via recherche (multi-sélection)",
         titre: c.titre + (c.sousTitre ? " — " + c.sousTitre : ""), serie: book.serie || "", tome: extractTome(c.titre + " " + (c.sousTitre || "")),
         auteur: c.auteur || "", editeur: c.editeur || "", annee: c.annee ? parseInt(c.annee) : "", isbn: c.isbn || "",
-        cover: c.cover || (c.isbn ? "https://covers.openlibrary.org/b/isbn/" + cleanIsbn(c.isbn) + "-L.jpg" : ""), _coverOk: false };
+        cover: c.cover || "", _coverOk: false };   // vérifiée/complétée après ajout
     });
     onApply(items);
   }
@@ -161,11 +166,10 @@ function SuggestPanel({ book, books, refCatalog, onApply, onClose }) {
       <div className="suggest-hint">{status}</div>
       <div className="suggest-list">
         {results.map((c, i) => {
-          const coverUrl = c.cover || (c.isbn ? "https://covers.openlibrary.org/b/isbn/" + cleanIsbn(c.isbn) + "-M.jpg" : "");
           return (
             <label className="suggest-item" key={i}>
               <input type="checkbox" className="suggest-check" checked={checked.has(i)} onChange={() => toggle(i)} />
-              <div className="suggest-cover">{coverUrl ? <img src={coverUrl} alt="" loading="lazy" onError={e => e.target.style.display = "none"} /> : <div className="suggest-nocover">📕</div>}</div>
+              <div className="suggest-cover"><SmartThumb isbn={c.isbn} cover={c.cover} fallback={<div className="suggest-nocover">📕</div>} /></div>
               <div className="suggest-info">
                 <div className="suggest-title">{c.titre}{c.sousTitre ? " — " + c.sousTitre : ""}</div>
                 {c.auteur && <div className="suggest-meta">{c.auteur}</div>}
