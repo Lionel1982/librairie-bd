@@ -87,9 +87,12 @@ export async function updateBook(id, patch) {
   const userId = await uid(); if (!userId) return null;
   const row = patchToRow(patch);               // seulement les champs fournis
   if (Object.keys(row).length === 0) return null;
-  const { data, error } = await supabase.from("books").update(row).eq("id", id).select().single();
-  if (error) { console.warn("updateBook", error); return null; }
-  return rowToBook(data);
+  const { data, error } = await supabase.from("books").update(row).eq("id", id).select();
+  if (error) { console.warn("updateBook", error); const e = new Error(error.message || "update refusé"); e._bdlib = true; throw e; }
+  if (!data || data.length === 0) {
+    const e = new Error("0 ligne modifiée — session vue=" + (userId || "NULL")); e._bdlib = true; e._zero = true; throw e;
+  }
+  return rowToBook(data[0]);
 }
 export async function deleteBook(id) {
   // DIAGNOSTIC : qui suis-je côté client au moment du delete ?

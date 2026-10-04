@@ -42,8 +42,16 @@ export function useLibrary(userId) {
   }, []);
 
   const editBook = useCallback(async (id, patch) => {
-    setBooks(bs => bs.map(b => b.id === id ? { ...b, ...patch } : b)); // optimiste
-    await DB.updateBook(id, patch);
+    let backup = null;
+    setBooks(bs => bs.map(b => { if (b.id === id) { backup = b; return { ...b, ...patch }; } return b; })); // optimiste
+    try {
+      const saved = await DB.updateBook(id, patch);
+      if (saved) setBooks(bs => bs.map(b => b.id === id ? saved : b)); // aligne sur la base
+      return saved;
+    } catch (e) {
+      if (backup) setBooks(bs => bs.map(b => b.id === id ? backup : b)); // restaure : l'écran = la base
+      throw e;
+    }
   }, []);
 
   const removeBook = useCallback(async (id) => {
@@ -95,12 +103,20 @@ export function useLibrary(userId) {
   const enrichCovers = useCallback(async (ids) => {
     const idSet = ids && ids.length ? new Set(ids) : null;
     let targets = [];
-    setBooks(bs => { targets = bs.filter(b => (!idSet || idSet.has(b.id)) && b.titre && (!b.cover || !b._coverOk)); return bs; });
+    setBooks(bs => { targets = bs.filter(b => (!idSet || idSet.has(b.id)) && (b.titre || b.isbn) && (!b.cover || !b._coverOk)); return bs; });
     for (const b of targets) {
       let patch = null;
       if (b.cover && await API.validateImage(b.cover)) patch = { _coverOk: true };
-      else if (b.isbn) { const c = await API.resolveCover(S.cleanIsbn(b.isbn), ""); if (c) patch = { cover: c, _coverOk: true }; }
-      if (patch) { setBooks(bs => bs.map(x => x.id === b.id ? { ...x, ...patch } : x)); await DB.updateBook(b.id, patch); }
+      else if (b.isbn) {
+        let c = "";
+        try { c = await API.fetchCover(b.isbn); } catch {}                    // BnF -> Google -> OpenLibrary (serveur)
+        if (!c) { try { c = await API.resolveCover(S.cleanIsbn(b.isbn), ""); } catch {} }
+        if (c) patch = { cover: c, _coverOk: true };
+      }
+      if (patch) {
+        setBooks(bs => bs.map(x => x.id === b.id ? { ...x, ...patch } : x));
+        try { await DB.updateBook(b.id, patch); } catch (e) { console.warn("enrichCovers update", e); }
+      }
       await new Promise(r => setTimeout(r, 120));
     }
   }, []);

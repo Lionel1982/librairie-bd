@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.12.0-supabase";
+const APP_VERSION = "3.13.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -74,6 +74,7 @@ function LibraryApp({ user }) {
     const skipped = list.length - toAdd.length;
     try {
       const saved = toAdd.length ? await lib.addBooksBulk(toAdd) : [];
+      if (saved.length) setTimeout(() => lib.enrichCovers(saved.map(s => s.id)), 300);
       let msg = "📷 " + saved.length + " album(s) scanné(s) ajouté(s)";
       if (skipped) msg += " · " + skipped + " doublon(s) ignoré(s)";
       notify(msg);
@@ -83,19 +84,25 @@ function LibraryApp({ user }) {
     setScanOpen(false);
   }
   async function upsertBook(data, id) {
-    if (id) { await lib.editBook(id, data); }
-    else {
-      const saved = await lib.addBook(data);
-      if (saved) setTimeout(() => lib.enrichCovers([saved.id]), 100);
-    }
+    try {
+      if (id) { await lib.editBook(id, data); notify("✅ Enregistré"); }
+      else {
+        const saved = await lib.addBook(data);
+        if (!saved) { notify("❌ Ajout refusé par la base"); return; }
+        notify("✅ Enregistré");
+        setTimeout(() => lib.enrichCovers([saved.id]), 100);
+      }
+    } catch (e) { notify("❌ Non enregistré : " + (e?.message || "erreur")); }
   }
   async function deleteBook(id) {
     try { await lib.removeBook(id); notify("🗑️ Supprimée"); }
     catch (e) { notify("❌ Suppression impossible : " + (e?.message || "erreur")); }
   }
   async function tinderCommit(id, act) {
-    if (act === "retirer") { await lib.removeBook(id); return; }
-    await lib.editBook(id, { statut: act });
+    try {
+      if (act === "retirer") { await lib.removeBook(id); return; }
+      await lib.editBook(id, { statut: act });
+    } catch (e) { notify("❌ Tri non enregistré : " + (e?.message || "erreur")); }
   }
   function blSerie(name) { lib.addBlSerie(name); notify("⛔ Série ignorée : " + name); }
   function blAlbum(a) { lib.addBlAlbum(a); notify("⛔ Album ignoré"); }
@@ -264,7 +271,7 @@ function LibraryApp({ user }) {
 
       {editingId !== undefined && (
         <BookModal id={editingId} books={books} refCatalog={refCatalog}
-          onSave={(data, id) => { upsertBook(data, id); setEditingId(undefined); notify("✅ Enregistré"); }}
+          onSave={(data, id) => { upsertBook(data, id); setEditingId(undefined); }}
           onDelete={(id) => { deleteBook(id); setEditingId(undefined); }}
           onClose={() => setEditingId(undefined)} />
       )}

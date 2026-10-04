@@ -110,6 +110,7 @@ export default function TinderMode({ books, refCatalog, onCommit, onAddMany, onC
 // Affiche la couverture ou un placeholder "Image non trouvée" (clic => complétion via onUp parent)
 function CoverOrFallback({ book }) {
   const [err, setErr] = React.useState(false);
+  React.useEffect(() => { setErr(false); }, [book.cover]);
   if (book.cover && !err) {
     return <img src={book.cover} alt="" draggable="false" onError={() => setErr(true)} />;
   }
