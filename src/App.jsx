@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import * as S from "./lib/store.js";
 import * as API from "./lib/api.js";
 import { useSession } from "./lib/useSession.js";
@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.0.1-supabase";
+const APP_VERSION = "3.0.2-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -42,6 +42,7 @@ function LibraryApp({ user }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [toast, setToast] = useState("");
+  const fileInputRef = useRef(null);
 
   const notify = (m) => setToast(m);
   const pending = useMemo(() => books.filter(b => b.statut === "a-confirmer").length, [books]);
@@ -180,6 +181,8 @@ function LibraryApp({ user }) {
 
   return (
     <div id="app">
+      <input ref={fileInputRef} type="file" accept=".csv" hidden
+        onChange={e => { const f = e.target.files[0]; if (f) importBdgest(f); e.target.value = ""; }} />
       <header className="app-header">
         <div className="header-left">
           <h1 className="logo">📚 Ma Bibliothèque BD</h1>
@@ -192,7 +195,7 @@ function LibraryApp({ user }) {
 
           <Menu align="right" trigger={<>⚙️</>} buttonClass="btn btn-ghost" className="gear-menu">
             {(close) => (<>
-              <label className="hdr-menu-item" onClick={() => setTimeout(close, 0)}>📚 Importer BDGest<input type="file" accept=".csv" hidden onChange={e => { if (e.target.files[0]) importBdgest(e.target.files[0]); close(); }} /></label>
+              <button className="hdr-menu-item" onClick={() => { close(); setTimeout(() => fileInputRef.current && fileInputRef.current.click(), 50); }}>📚 Importer BDGest</button>
               <button className="hdr-menu-item" onClick={() => { exportJson(); close(); }}>⬇️ Exporter (JSON)</button>
               <button className="hdr-menu-item" onClick={() => { migrateFromLocalStorage(); close(); }}>⬆️ Migrer mes données locales</button>
               <div className="hdr-menu-sep" />
