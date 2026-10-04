@@ -207,12 +207,8 @@ function LibraryApp({ user }) {
     <div id="app" className={scrolled ? "app-scrolled" : ""}>
       <input ref={fileInputRef} type="file" accept=".csv" hidden
         onChange={e => { const f = e.target.files[0]; if (f) importBdgest(f); e.target.value = ""; }} />
-      <header className="app-header">
-        <div className="header-left">
-          <h1 className="logo">📚 Ma Bibliothèque BD</h1>
-          <span className="app-version">v{APP_VERSION}</span>
-        </div>
-        <div className="header-actions">
+      <div className="topbar">
+        <div className="topbar-row">
           <Menu align="left" trigger={<>☰</>} buttonClass="btn btn-ghost btn-burger" className="burger-menu">
             {(close) => (<>
               <div className="hdr-menu-user">{user.email}</div>
@@ -226,22 +222,19 @@ function LibraryApp({ user }) {
               <button className="hdr-menu-item" onClick={() => { logout(); close(); }}>🚪 Se déconnecter</button>
             </>)}
           </Menu>
+          <h1 className="logo">📚 Ma Bibliothèque BD</h1>
+          <div className="topbar-actions">
+            <button className="action-tile action-primary" title="Chercher un album" onClick={() => setFindOpen(true)}>
+              <span className="action-icon">🔎</span><span className="action-label">Chercher</span>
+            </button>
+            <button className={"action-tile" + (pending ? " action-pending" : "")} title="Trier" onClick={() => setTinderOpen(true)}>
+              <span className="action-icon">🔥</span><span className="action-label">Trier{pending ? " (" + pending + ")" : ""}</span>
+            </button>
+            <button className="action-tile" title="Compléter" onClick={() => setPlanOpen(true)}>
+              <span className="action-icon">🎯</span><span className="action-label">Compléter</span>
+            </button>
+          </div>
         </div>
-      </header>
-
-      <div className="action-bar">
-        <button className="action-tile action-primary" title="Chercher un album" onClick={() => setFindOpen(true)}>
-          <span className="action-icon">🔎</span>
-          <span className="action-label">Chercher</span>
-        </button>
-        <button className={"action-tile" + (pending ? " action-pending" : "")} title="Trier" onClick={() => setTinderOpen(true)}>
-          <span className="action-icon">🔥</span>
-          <span className="action-label">Trier{pending ? " (" + pending + ")" : ""}</span>
-        </button>
-        <button className="action-tile" title="Compléter" onClick={() => setPlanOpen(true)}>
-          <span className="action-icon">🎯</span>
-          <span className="action-label">Compléter</span>
-        </button>
       </div>
 
       <div className="mode-tabs">

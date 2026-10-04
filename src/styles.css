@@ -864,8 +864,7 @@ select:focus { outline: none; border-color: var(--accent); }
   #app { padding: 10px !important; }
   .app-header { flex-wrap: nowrap; gap: 8px; }
   .logo { font-size: 17px; }
-  .app-version { display: none; }
-  .action-bar { gap: 8px; }
+    .action-bar { gap: 8px; }
   .action-tile { min-height: 84px; padding: 12px 6px; border-radius: 14px; }
   .action-tile .action-icon { font-size: 26px; }
   .action-tile .action-label { font-size: 13px; }
@@ -965,4 +964,14 @@ select:focus { outline: none; border-color: var(--accent); }
 .plan-controls .form-field input { width: 100%; box-sizing: border-box; }
 @media (max-width: 640px) {
   .plan-controls { flex-direction: column; gap: 12px; }
+}
+
+
+/* ===== Badge version visible en haut à droite (vérif redéploiement) ===== */
+.app-version {
+  position: fixed; top: 6px; right: 8px; z-index: 500;
+  display: inline-block; font-size: 11px; font-weight: 700;
+  color: #fff; background: rgba(124,92,255,.9);
+  padding: 3px 8px; border-radius: 999px; pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,.4);
 }
