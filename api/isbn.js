@@ -202,6 +202,12 @@ async function tryBnF(isbn) {
   // éditeur : il peut y avoir plusieurs $c (co-éditions) — on prend le dernier non vide
   const editeurs = unimarcAllSub(xml, "210", "c");
   let editeur = editeurs.length ? editeurs[editeurs.length - 1] : "";
+  // fallback robuste : chercher un éditeur BD FR connu dans le texte brut du XML
+  if (!editeur) {
+    const known = ["Dargaud","Dupuis","Casterman","Delcourt","Glénat","Glenat","Le Lombard","Lombard","Soleil","Urban Comics","Panini","Bamboo","Fluide Glacial","Rue de Sèvres","Dupuis","Kana","Pika","Ki-oon","Vents d'Ouest","Les Humanoïdes Associés","L'Atalante","Albin Michel","Gallimard","Milan","Nucléa","Hors Collection","Robert Laffont","Éditions du Signe","Pointe Noire","Les Arènes"];
+    const text = xml.replace(/<[^>]+>/g, " ");
+    for (const k of known) { if (new RegExp("\\b" + k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i").test(text)) { editeur = k; break; } }
+  }
   const dmatch = (unimarcSub(xml, "210", "d") || xml).match(/\b(19|20)\d{2}\b/);
   const annee = dmatch ? dmatch[0] : "";
 
