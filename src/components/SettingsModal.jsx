@@ -23,8 +23,12 @@ export default function SettingsModal({ blacklist, onUnblacklistSerie, onUnblack
   async function runCleanup() {
     if (!onCleanupJunk) return;
     setJunkMsg("Nettoyage…");
-    try { const r = await onCleanupJunk(); setJunkMsg("✅ " + (r?.removed ?? 0) + " entrée(s) parasite(s) supprimée(s)."); }
-    catch { setJunkMsg("⚠️ Erreur pendant le nettoyage."); }
+    try {
+      const r = await onCleanupJunk();
+      let m = "✅ " + (r?.removed ?? 0) + " entrée(s) supprimée(s).";
+      if (r?.failed) m += " ⚠️ " + r.failed + " échec(s)" + (r.lastErr ? " : " + r.lastErr : "");
+      setJunkMsg(m);
+    } catch (e) { setJunkMsg("⚠️ Erreur : " + (e?.message || "nettoyage")); }
   }
 
   const title = screen === "home" ? "⚙️ Paramètres"

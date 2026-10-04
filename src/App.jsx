@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.9.0-supabase";
+const APP_VERSION = "3.10.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -89,7 +89,10 @@ function LibraryApp({ user }) {
       if (saved) setTimeout(() => lib.enrichCovers([saved.id]), 100);
     }
   }
-  async function deleteBook(id) { await lib.removeBook(id); notify("🗑️ Supprimée"); }
+  async function deleteBook(id) {
+    try { await lib.removeBook(id); notify("🗑️ Supprimée"); }
+    catch (e) { notify("❌ Suppression impossible : " + (e?.message || "erreur")); }
+  }
   async function tinderCommit(id, act) {
     if (act === "retirer") { await lib.removeBook(id); return; }
     await lib.editBook(id, { statut: act });

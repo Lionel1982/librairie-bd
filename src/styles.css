@@ -1034,3 +1034,21 @@ select:focus { outline: none; border-color: var(--accent); }
 .cover-picker-manual { margin-top: 16px; }
 .cover-picker-manual label { display: block; font-size: 13px; color: var(--text-dim, #9a9ab0); margin-bottom: 6px; }
 .cover-picker-manual input { flex: 1; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--border, #2a2a3a); background: var(--surface-2, #1a1a24); color: var(--text, #e8e8f0); font-size: 14px; }
+
+
+/* ===== Icônes topbar : tenir sur la largeur sans scroll horizontal (v3.10) ===== */
+.topbar-actions { overflow: hidden; }
+.topbar-actions .action-tile { min-width: 0; padding: 10px 4px; }
+.topbar-actions .action-label { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.topbar-actions .action-icon { font-size: 22px; }
+@media (max-width: 640px) {
+  .topbar-actions { gap: 6px; }
+  .topbar-actions .action-tile { min-height: 68px; padding: 8px 3px; border-radius: 12px; gap: 4px; }
+  .topbar-actions .action-icon { font-size: 20px; }
+  .topbar-actions .action-label { font-size: 11px; }
+}
+@media (max-width: 420px) {
+  /* très petits écrans : on masque le label, on garde l'icône (title=infobulle) */
+  .topbar-actions .action-label { display: none; }
+  .topbar-actions .action-tile { min-height: 52px; }
+}

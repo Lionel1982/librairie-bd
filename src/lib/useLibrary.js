@@ -47,8 +47,15 @@ export function useLibrary(userId) {
   }, []);
 
   const removeBook = useCallback(async (id) => {
-    setBooks(bs => bs.filter(b => b.id !== id)); // optimiste
-    await DB.deleteBook(id);
+    let backup = null;
+    setBooks(bs => { backup = bs.find(b => b.id === id); return bs.filter(b => b.id !== id); }); // optimiste
+    try {
+      await DB.deleteBook(id);
+    } catch (e) {
+      // échec en base : on restaure la carte (sinon elle revient "mystérieusement" au refresh)
+      if (backup) setBooks(bs => [backup, ...bs]);
+      throw e;
+    }
   }, []);
 
   // ---------- REF CATALOG ----------
@@ -115,11 +122,13 @@ export function useLibrary(userId) {
       });
       return bs;
     });
+    let removed = 0, failed = 0, lastErr = "";
     for (const b of targets) {
       setBooks(bs => bs.filter(x => x.id !== b.id));
-      await DB.deleteBook(b.id);
+      try { await DB.deleteBook(b.id); removed++; }
+      catch (e) { failed++; lastErr = e?.message || ""; setBooks(bs => [b, ...bs]); } // restaure si échec
     }
-    return { removed: targets.length };
+    return { removed, failed, lastErr };
   }, []);
 
   // Nettoyage des couvertures : pour TOUS les albums ayant un ISBN, récupère une
