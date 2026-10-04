@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.4.2-supabase";
+const APP_VERSION = "3.5.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -222,15 +222,15 @@ function LibraryApp({ user }) {
       </header>
 
       <div className="action-bar">
-        <button className="action-tile action-primary" onClick={() => setFindOpen(true)}>
+        <button className="action-tile action-primary" title="Chercher un album" onClick={() => setFindOpen(true)}>
           <span className="action-icon">🔎</span>
           <span className="action-label">Chercher</span>
         </button>
-        <button className={"action-tile" + (pending ? " action-pending" : "")} onClick={() => setTinderOpen(true)}>
+        <button className={"action-tile" + (pending ? " action-pending" : "")} title="Trier" onClick={() => setTinderOpen(true)}>
           <span className="action-icon">🔥</span>
-          <span className="action-label">Trier{pending ? <><br /><b>{pending}</b></> : ""}</span>
+          <span className="action-label">Trier{pending ? " (" + pending + ")" : ""}</span>
         </button>
-        <button className="action-tile" onClick={() => setPlanOpen(true)}>
+        <button className="action-tile" title="Compléter" onClick={() => setPlanOpen(true)}>
           <span className="action-icon">🎯</span>
           <span className="action-label">Compléter</span>
         </button>

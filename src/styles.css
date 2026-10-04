@@ -893,8 +893,10 @@ select:focus { outline: none; border-color: var(--accent); }
 .tinder-nocover-text { font-size: 16px; font-weight: 600; }
 .tinder-nocover-hint { font-size: 12px; opacity: .8; }
 .settings-cover-msg { margin-top: 10px; font-size: 13px; color: var(--text, #e8e8f0); background: var(--surface-2, #1a1a24); border: 1px solid var(--border, #2a2a3a); border-radius: 8px; padding: 8px 12px; }
-/* ===== En-tête collant (sticky) : header + actions + filtre restent visibles au scroll =====
-   Les onglets (mode-tabs) NE sont PAS collés. Fond opaque pour masquer le contenu qui défile. */
+/* ===== En-tête collant + barre compacte au scroll =====
+   Repos : header normal, 3 grosses cases, onglets, filtre.
+   Au scroll (.app-scrolled) : les 3 cases deviennent de petites pastilles collées
+   sous le header ; les onglets et le filtre sont masqués. */
 .app-header {
   position: sticky; top: 0; z-index: 200;
   background: var(--bg, #0b0b10);
@@ -905,32 +907,32 @@ select:focus { outline: none; border-color: var(--accent); }
   background: var(--bg, #0b0b10);
   padding-bottom: 10px;
 }
-.toolbar {
-  position: sticky; top: 150px; z-index: 150;
-  background: var(--bg, #0b0b10);
-  padding-top: 4px; padding-bottom: 10px;
-}
-.mode-tabs { position: static; } /* onglets non collés : défilent avec le contenu */
+.mode-tabs { position: static; }
+.toolbar { position: static; }
 
-/* Burger : son panneau doit passer AU-DESSUS de tout */
-.burger-menu { z-index: 300; }
-.burger-menu .hdr-menu-panel { z-index: 400; }
+/* Burger : panneau au-dessus du contenu courant (mais sous les modales) */
+.burger-menu { z-index: 210; }
+.burger-menu .hdr-menu-panel { z-index: 420; }
 
-/* Version compacte au scroll : les grosses cases rétrécissent, restent visibles */
-.app-scrolled .action-tile { min-height: 46px; padding: 8px 10px; flex-direction: row; gap: 8px; }
-.app-scrolled .action-tile .action-icon { font-size: 20px; }
-.app-scrolled .action-tile .action-label { font-size: 13px; }
-.app-scrolled .action-bar { top: 50px; }
-.app-scrolled .toolbar { top: 104px; }
+/* --- Mode compacté au scroll --- */
 .app-scrolled .app-header { box-shadow: 0 4px 16px rgba(0,0,0,.5); }
-
-@media (max-width: 640px) {
-  .action-bar { top: 50px; }
-  .toolbar { top: 150px; }
-  .app-scrolled .action-tile { min-height: 44px; }
-  .app-scrolled .toolbar { top: 100px; }
+.app-scrolled .action-bar {
+  top: 50px; gap: 8px; padding-bottom: 8px;
 }
+.app-scrolled .action-tile {
+  flex: 0 0 auto; min-height: 0; padding: 8px 14px; border-radius: 10px;
+  flex-direction: row; gap: 8px;
+}
+.app-scrolled .action-tile .action-icon { font-size: 18px; }
+.app-scrolled .action-tile .action-label { font-size: 13px; font-weight: 600; }
+/* onglets + filtre masqués au scroll */
+.app-scrolled .mode-tabs,
+.app-scrolled .toolbar { display: none; }
 
+/* ===== Les modales passent AU-DESSUS de tout (fix : filtre/actions visibles par-dessus Compléter) ===== */
+.modal-overlay { z-index: 1000; }
+.tinder-overlay { z-index: 1000; }
+.scanner-overlay { z-index: 1000; }
 
 /* ===== Paramètres : navigation en rubriques ===== */
 .settings-menu { display: flex; flex-direction: column; gap: 10px; }
