@@ -5,20 +5,19 @@ import { searchCandidates } from "../lib/api.js";
 // Mode Tinder plein écran : swipe pour trancher les "à confirmer"
 export default function TinderMode({ books, refCatalog, onCommit, onAddMany, onClose }) {
   const queue = useMemo(() => books.filter(b => b.statut === "a-confirmer").map(b => b.id), [books]);
-  const [index, setIndex] = useState(0);
   const [drag, setDrag] = useState({ dx: 0, dy: 0, active: false });
   const [suggestFor, setSuggestFor] = useState(null); // book courant si panneau ouvert
   const startRef = useRef({ x: 0, y: 0 });
   const cardRef = useRef(null);
 
-  const remaining = queue.slice(index);
-  const currentId = queue[index];
+  const remaining = queue; // la queue se vide d'elle-même quand on tranche
+  const currentId = queue[0];
   const current = books.find(b => b.id === currentId);
 
   function commit(act) {
     if (!current) return;
     onCommit(current.id, act);
-    setIndex(i => i + 1);
+    // la queue se recalcule (le livre quitte 'a-confirmer') : on reste à l'index 0
     setDrag({ dx: 0, dy: 0, active: false });
   }
 

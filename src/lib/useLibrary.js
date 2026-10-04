@@ -98,6 +98,26 @@ export function useLibrary(userId) {
     }
   }, []);
 
+  // Supprime les entrées parasites (lignes d'exemple/template importées par erreur :
+  // "Serie — T.TypeObjet — Descriptif", "Revue — T.Num — Titre", "Largeur / Profondeur"...).
+  const cleanupJunk = useCallback(async () => {
+    const junkRe = /(T\.TypeObjet|T\.Num|TypeObjet|Descriptif|Largeur\s*\/\s*Profondeur|^Serie\b|^Revue\b)/i;
+    let targets = [];
+    setBooks(bs => {
+      targets = bs.filter(b => {
+        const hay = (b.serie || "") + " " + (b.titre || "");
+        const noIsbn = !b.isbn || String(b.isbn).replace(/[^0-9Xx]/g, "").length < 10;
+        return junkRe.test(hay) && noIsbn;
+      });
+      return bs;
+    });
+    for (const b of targets) {
+      setBooks(bs => bs.filter(x => x.id !== b.id));
+      await DB.deleteBook(b.id);
+    }
+    return { removed: targets.length };
+  }, []);
+
   // Nettoyage des couvertures : pour TOUS les albums ayant un ISBN, récupère une
   // couverture valide (BnF -> Google -> OpenLibrary) via /api/cover. onProgress(i,total,titre).
   const refreshCoversBnF = useCallback(async (onProgress) => {
@@ -126,6 +146,6 @@ export function useLibrary(userId) {
     addBook, addBooksBulk, editBook, removeBook,
     replaceCatalog, setSerieMeta,
     addBlSerie, addBlAlbum, removeBlSerie, removeBlAlbum,
-    enrichCovers, refreshCoversBnF,
+    enrichCovers, refreshCoversBnF, cleanupJunk,
   };
 }

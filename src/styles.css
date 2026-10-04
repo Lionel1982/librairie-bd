@@ -893,3 +893,34 @@ select:focus { outline: none; border-color: var(--accent); }
 .tinder-nocover-text { font-size: 16px; font-weight: 600; }
 .tinder-nocover-hint { font-size: 12px; opacity: .8; }
 .settings-cover-msg { margin-top: 10px; font-size: 13px; color: var(--text, #e8e8f0); background: var(--surface-2, #1a1a24); border: 1px solid var(--border, #2a2a3a); border-radius: 8px; padding: 8px 12px; }
+
+
+/* ===== En-tête collant (sticky) : header + actions + onglets restent visibles au scroll ===== */
+.app-header, .action-bar, .mode-tabs, .toolbar {
+  position: sticky;
+  z-index: 50;
+  background: var(--bg, #0b0b10);
+}
+.app-header { top: 0; padding-top: 8px; }
+.action-bar { top: 56px; }
+.mode-tabs  { top: 160px; }
+.toolbar    { top: 212px; }
+
+/* Version compacte au scroll : les grosses cases rétrécissent, restent visibles */
+.app-scrolled .action-tile { min-height: 48px; padding: 8px 10px; flex-direction: row; gap: 8px; }
+.app-scrolled .action-tile .action-icon { font-size: 20px; }
+.app-scrolled .action-tile .action-label { font-size: 13px; }
+.app-scrolled .action-tile .action-label br { display: none; }
+.app-scrolled .action-bar { top: 52px; }
+.app-scrolled .mode-tabs { top: 108px; }
+.app-scrolled .toolbar { top: 160px; }
+.app-scrolled .app-header { box-shadow: 0 2px 12px rgba(0,0,0,.4); }
+
+@media (max-width: 640px) {
+  .action-bar { top: 52px; }
+  .mode-tabs { top: 150px; }
+  .toolbar { top: 198px; }
+  .app-scrolled .action-tile { min-height: 44px; }
+  .app-scrolled .mode-tabs { top: 100px; }
+  .app-scrolled .toolbar { top: 150px; }
+}

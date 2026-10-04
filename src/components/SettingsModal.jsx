@@ -1,7 +1,14 @@
 import React, { useState } from "react";
 
 // Paramètres : gestion de la liste noire (séries / albums à ne plus proposer)
-export default function SettingsModal({ blacklist, onUnblacklistSerie, onUnblacklistAlbum, onRefreshCovers, onClose }) {
+export default function SettingsModal({ blacklist, onUnblacklistSerie, onUnblacklistAlbum, onRefreshCovers, onCleanupJunk, onClose }) {
+  const [junkMsg, setJunkMsg] = useState("");
+  async function runCleanup() {
+    if (!onCleanupJunk) return;
+    setJunkMsg("Nettoyage…");
+    try { const r = await onCleanupJunk(); setJunkMsg("✅ " + (r?.removed ?? 0) + " entrée(s) parasite(s) supprimée(s)."); }
+    catch { setJunkMsg("⚠️ Erreur pendant le nettoyage."); }
+  }
   const [coverBusy, setCoverBusy] = useState(false);
   const [coverMsg, setCoverMsg] = useState("");
   async function runRefreshCovers() {
@@ -27,6 +34,13 @@ export default function SettingsModal({ blacklist, onUnblacklistSerie, onUnblack
             <p className="settings-empty">Récupère une couverture (BnF, Google Books, Open Library) pour tous les albums ayant un ISBN. Les couvertures existantes valides ne sont écrasées que si une meilleure est trouvée.</p>
             <button className="btn btn-primary" disabled={coverBusy} onClick={runRefreshCovers}>{coverBusy ? "⏳ En cours…" : "🖼️ Récupérer les couvertures manquantes"}</button>
             {coverMsg && <div className="settings-cover-msg">{coverMsg}</div>}
+          </section>
+
+          <section className="settings-section">
+            <h3>🧹 Nettoyage</h3>
+            <p className="settings-empty">Supprime les entrées parasites importées par erreur (lignes d’exemple « T.TypeObjet / Descriptif / Largeur / Profondeur », sans ISBN).</p>
+            <button className="btn btn-ghost" onClick={runCleanup}>🧹 Supprimer les entrées parasites</button>
+            {junkMsg && <div className="settings-cover-msg">{junkMsg}</div>}
           </section>
 
           <section className="settings-section">

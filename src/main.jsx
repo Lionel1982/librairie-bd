@@ -4,3 +4,10 @@ import App from "./App.jsx";
 import "./styles.css";
 
 createRoot(document.getElementById("root")).render(<App />);
+
+// Enregistrement du service worker (PWA — installable sur mobile)
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((e) => console.warn("SW:", e));
+  });
+}

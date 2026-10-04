@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.3.0-supabase";
+const APP_VERSION = "3.4.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -42,7 +42,14 @@ function LibraryApp({ user }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [toast, setToast] = useState("");
+  const [scrolled, setScrolled] = useState(false);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const notify = (m) => setToast(m);
   const pending = useMemo(() => books.filter(b => b.statut === "a-confirmer").length, [books]);
@@ -189,7 +196,7 @@ function LibraryApp({ user }) {
   if (loading) return <div className="app-loading">⏳ Chargement de ta collection…</div>;
 
   return (
-    <div id="app">
+    <div id="app" className={scrolled ? "app-scrolled" : ""}>
       <input ref={fileInputRef} type="file" accept=".csv" hidden
         onChange={e => { const f = e.target.files[0]; if (f) importBdgest(f); e.target.value = ""; }} />
       <header className="app-header">
@@ -277,6 +284,7 @@ function LibraryApp({ user }) {
         <SettingsModal blacklist={blacklist}
           onUnblacklistSerie={unblSerie} onUnblacklistAlbum={unblAlbum}
           onRefreshCovers={lib.refreshCoversBnF}
+          onCleanupJunk={lib.cleanupJunk}
           onClose={() => setSettingsOpen(false)} />
       )}
       <Toast message={toast} onDone={() => setToast("")} />
