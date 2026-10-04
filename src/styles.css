@@ -892,41 +892,53 @@ select:focus { outline: none; border-color: var(--accent); }
 .tinder-nocover-text { font-size: 16px; font-weight: 600; }
 .tinder-nocover-hint { font-size: 12px; opacity: .8; }
 .settings-cover-msg { margin-top: 10px; font-size: 13px; color: var(--text, #e8e8f0); background: var(--surface-2, #1a1a24); border: 1px solid var(--border, #2a2a3a); border-radius: 8px; padding: 8px 12px; }
-/* ===== En-tête collant + barre compacte au scroll =====
-   Repos : header normal, 3 grosses cases, onglets, filtre.
-   Au scroll (.app-scrolled) : les 3 cases deviennent de petites pastilles collées
-   sous le header ; les onglets et le filtre sont masqués. */
-.app-header {
+/* ===== Topbar collante : burger + logo + 3 actions. Compacte au scroll. =====
+   Repos : ligne [burger][logo], puis les 3 grosses cases en dessous (wrap).
+   Au scroll (.app-scrolled) : tout sur UNE ligne [burger] [🔎][🔥][🎯], logo masqué. */
+.topbar {
   position: sticky; top: 0; z-index: 200;
   background: var(--bg, #0b0b10);
-  padding-top: 8px; padding-bottom: 8px;
+  padding: 8px 0 10px;
 }
-.action-bar {
-  position: sticky; top: 54px; z-index: 150;
-  background: var(--bg, #0b0b10);
-  padding-bottom: 10px;
+.topbar-row {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
 }
-.mode-tabs { position: static; }
-.toolbar { position: static; }
+.topbar .logo { margin: 0; flex: 0 0 auto; }
+.topbar-actions {
+  display: flex; gap: 10px; width: 100%;
+}
+.topbar-actions .action-tile {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  min-height: 80px; padding: 12px 8px; border-radius: 14px;
+  background: var(--surface-2, #1a1a24); border: 1px solid var(--border, #2a2a3a);
+  color: var(--text, #e8e8f0); cursor: pointer; transition: transform .1s, border-color .15s;
+}
+.topbar-actions .action-tile:active { transform: scale(.97); }
+.topbar-actions .action-icon { font-size: 26px; }
+.topbar-actions .action-label { font-size: 13px; font-weight: 600; }
+.topbar-actions .action-primary { background: linear-gradient(135deg, #7c5cff, #5a3ee0); border-color: transparent; }
+.topbar-actions .action-pending { border-color: #ff5c7c; box-shadow: 0 0 0 2px rgba(255,92,124,.25); }
 
-/* Burger : panneau au-dessus du contenu courant (mais sous les modales) */
+/* --- Au scroll : tout compact sur une ligne --- */
+.app-scrolled .topbar { box-shadow: 0 4px 16px rgba(0,0,0,.5); padding: 6px 0; }
+.app-scrolled .topbar .logo { display: none; }           /* on masque le titre pour gagner la place */
+.app-scrolled .topbar-actions {
+  width: auto; flex: 1; gap: 8px; justify-content: flex-end;
+}
+.app-scrolled .topbar-actions .action-tile {
+  flex: 0 0 auto; flex-direction: row; min-height: 0; padding: 8px 12px; border-radius: 10px; gap: 6px;
+}
+.app-scrolled .topbar-actions .action-icon { font-size: 18px; }
+.app-scrolled .topbar-actions .action-label { font-size: 13px; }
+
+/* onglets + filtre : non collés, et masqués au scroll */
+.mode-tabs, .toolbar { position: static; }
+.app-scrolled .mode-tabs, .app-scrolled .toolbar { display: none; }
+
+/* burger au-dessus du contenu, modales encore au-dessus */
 .burger-menu { z-index: 210; }
 .burger-menu .hdr-menu-panel { z-index: 420; }
-
-/* --- Mode compacté au scroll --- */
-.app-scrolled .app-header { box-shadow: 0 4px 16px rgba(0,0,0,.5); }
-.app-scrolled .action-bar {
-  top: 50px; gap: 8px; padding-bottom: 8px;
-}
-.app-scrolled .action-tile {
-  flex: 0 0 auto; min-height: 0; padding: 8px 14px; border-radius: 10px;
-  flex-direction: row; gap: 8px;
-}
-.app-scrolled .action-tile .action-icon { font-size: 18px; }
-.app-scrolled .action-tile .action-label { font-size: 13px; font-weight: 600; }
-/* onglets + filtre masqués au scroll */
-.app-scrolled .mode-tabs,
-.app-scrolled .toolbar { display: none; }
+.modal-overlay, .tinder-overlay, .scanner-overlay { z-index: 1000; }
 
 /* ===== Les modales passent AU-DESSUS de tout (fix : filtre/actions visibles par-dessus Compléter) ===== */
 .modal-overlay { z-index: 1000; }
