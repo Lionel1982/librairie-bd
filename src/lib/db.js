@@ -32,6 +32,26 @@ function bookToRow(b, userId) {
   return row;
 }
 
+// Mappe UNIQUEMENT les champs présents dans le patch (ne réécrit pas les autres colonnes).
+// Évite qu'une modif partielle (ex: cover seule) écrase statut/tome/etc.
+function patchToRow(patch) {
+  const row = {};
+  const has = (k) => Object.prototype.hasOwnProperty.call(patch, k);
+  if (has("titre")) row.titre = patch.titre || "";
+  if (has("serie")) row.serie = patch.serie || "";
+  if (has("tome")) row.tome = (patch.tome === "" || patch.tome == null) ? null : Number(patch.tome);
+  if (has("auteur")) row.auteur = patch.auteur || "";
+  if (has("editeur")) row.editeur = patch.editeur || "";
+  if (has("annee")) row.annee = (patch.annee === "" || patch.annee == null) ? null : Number(patch.annee);
+  if (has("isbn")) row.isbn = patch.isbn || "";
+  if (has("statut")) row.statut = patch.statut || "jai";
+  if (has("note")) row.note = Number(patch.note) || 0;
+  if (has("commentaire")) row.commentaire = patch.commentaire || "";
+  if (has("cover")) row.cover = patch.cover || "";
+  if (has("_coverOk")) row.cover_ok = !!patch._coverOk;
+  return row;
+}
+
 async function uid() {
   const { data } = await supabase.auth.getUser();
   return data?.user?.id || null;
@@ -65,7 +85,8 @@ export async function insertBooks(list) {
 }
 export async function updateBook(id, patch) {
   const userId = await uid(); if (!userId) return null;
-  const row = bookToRow({ ...patch, id }, userId); delete row.user_id;
+  const row = patchToRow(patch);               // seulement les champs fournis
+  if (Object.keys(row).length === 0) return null;
   const { data, error } = await supabase.from("books").update(row).eq("id", id).select().single();
   if (error) { console.warn("updateBook", error); return null; }
   return rowToBook(data);

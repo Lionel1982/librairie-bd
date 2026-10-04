@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.11.0-supabase";
+const APP_VERSION = "3.12.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -254,7 +254,7 @@ function LibraryApp({ user }) {
       )}
 
       <main className="library">
-        {viewMode === "biblio" && <LibraryGrid books={books.filter(b => b.statut === "lu" || b.statut === "jai")} query={query} onOpen={setEditingId} />}
+        {viewMode === "biblio" && <LibraryGrid books={books.filter(b => S.OWNED.includes(b.statut))} query={query} onOpen={setEditingId} />}
         {viewMode === "wishlist" && <LibraryGrid books={books.filter(b => b.statut === "veux")} query={query} onOpen={setEditingId} wishlist />}
         {viewMode === "series" && <SeriesView books={books.filter(S.inLibrary)} seriesMeta={seriesMeta} onSetSerieMeta={(key, meta) => lib.setSerieMeta(key, meta)} query={query} blacklist={blacklist} onOpen={setEditingId} />}
         {viewMode === "etagere" && <ShelfView books={books.filter(S.inLibrary)} query={query} onOpen={setEditingId} />}
