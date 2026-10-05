@@ -149,3 +149,8 @@ create policy bl_del on public.blacklist for delete using (auth.uid() = user_id)
 -- ============================================================================
 --  FIN
 -- ============================================================================
+
+
+-- v3.17 : nombre de pages (épaisseur des tranches) + format (bd | manga)
+alter table public.books add column if not exists pages integer;
+alter table public.books add column if not exists format text default '';

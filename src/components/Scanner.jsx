@@ -79,6 +79,7 @@ export default function Scanner({ onAddMany, refCatalog = [], onClose }) {
         statut: direct ? "jai" : "a-confirmer", note: 0, commentaire: direct ? "Scanné" : "Scanné (à confirmer)",
         titre: info.titre || ("ISBN " + isbn), serie: info.serie || "", tome: (info.tome === undefined || info.tome === null) ? "" : info.tome,
         auteur: info.auteur || "", editeur: info.editeur || "", annee: info.annee || "",
+        pages: info.pages || "", format: info.format || "",
         isbn: info.isbn || isbn, cover: info.cover || "", _coverOk: false, // vérifiée/complétée après ajout
       });
     }

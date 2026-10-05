@@ -4,7 +4,7 @@ import SerieInput from "./SerieInput.jsx";
 import { lookupByISBN, lookupByISBNRemote, searchCandidates } from "../lib/api.js";
 import CoverPicker from "./CoverPicker.jsx";
 
-const EMPTY = { titre: "", serie: "", tome: "", auteur: "", editeur: "", annee: "", isbn: "", statut: "jai", note: 0, commentaire: "", cover: "" };
+const EMPTY = { titre: "", serie: "", tome: "", auteur: "", editeur: "", annee: "", isbn: "", statut: "jai", note: 0, commentaire: "", cover: "", pages: "", format: "" };
 
 export default function BookModal({ id, books, refCatalog, onSave, onDelete, onClose }) {
   const editing = id ? books.find(b => b.id === id) : null;
@@ -23,7 +23,7 @@ export default function BookModal({ id, books, refCatalog, onSave, onDelete, onC
       if (!info || !info.titre) { try { const web = await lookupByISBN(isbn); if (web && web.titre) info = web; else info = info || web || {}; } catch { info = info || {}; } }
       info = info || {};
       const props = [];
-      ["titre","serie","tome","auteur","editeur","annee","cover"].forEach(k => { if (info[k] && String(info[k]) !== String(f[k])) props.push({ field: k, value: info[k] }); });
+      ["titre","serie","tome","auteur","editeur","annee","pages","format","cover"].forEach(k => { if (info[k] && String(info[k]) !== String(f[k])) props.push({ field: k, value: info[k] }); });
       setSugg(props); setMsg(props.length ? props.length + " proposition(s) (ISBN)" : "✅ Rien à changer"); return;
     }
     const known = f.tome !== "" ? Number(f.tome) : "";
@@ -45,7 +45,7 @@ export default function BookModal({ id, books, refCatalog, onSave, onDelete, onC
     const hasTitre = f.titre && f.titre.trim();
     const hasIsbn = String(f.isbn || "").replace(/[^0-9Xx]/g, "").length >= 10;
     if (!hasTitre && !hasIsbn) { setMsg("⚠️ Titre OU ISBN obligatoire"); return; }
-    const data = { ...f, tome: f.tome !== "" ? Number(f.tome) : "", annee: f.annee !== "" ? Number(f.annee) : "", note: Number(f.note) || 0 };
+    const data = { ...f, tome: f.tome !== "" ? Number(f.tome) : "", annee: f.annee !== "" ? Number(f.annee) : "", note: Number(f.note) || 0, pages: (f.pages !== "" && f.pages != null) ? Number(f.pages) : "" };
     onSave(data, id || null);
   }
 
@@ -83,6 +83,12 @@ export default function BookModal({ id, books, refCatalog, onSave, onDelete, onC
             {renderField({ label: "Auteur", k: "auteur" })}
             {renderField({ label: "Éditeur", k: "editeur" })}
             {renderField({ label: "Année", k: "annee", type: "number" })}
+            {renderField({ label: "Pages", k: "pages", type: "number" })}
+            <div className="form-field"><label>Format</label>
+              <select value={f.format || ""} onChange={e => set("format", e.target.value)}>
+                <option value="">Auto</option><option value="bd">BD</option><option value="manga">Manga</option>
+              </select>
+            </div>
             <div className="form-field"><label>Statut</label>
               <select value={f.statut} onChange={e => set("statut", e.target.value)}>{Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
             </div>

@@ -137,18 +137,26 @@ export function buildSeriesList(books, excludeId) {
 }
 
 // Tri des albums. mode : recent | ancien | titre | serie | auteur | annee | note
-export const SORT_LABELS = { recent: "🕒 Ajout récent", ancien: "🕰️ Ajout ancien", titre: "🔤 Titre A→Z", serie: "🗂️ Série puis tome", auteur: "✍️ Auteur", annee: "📅 Année", note: "⭐ Note" };
+export const SORT_LABELS = { recent: "🕒 Ajout récent", serie: "🔤 A→Z (série puis tome)", ancien: "🕰️ Ajout ancien", auteur: "✍️ Auteur", annee: "📅 Année", note: "⭐ Note" };
 export function sortBooks(list, mode) {
   const cmp = (a, b) => String(a || "").localeCompare(String(b || ""), "fr", { sensitivity: "base", numeric: true });
   const num = (v) => (v === "" || v == null ? -1 : Number(v));
   const out = list.slice();
   switch (mode) {
     case "ancien": return out.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-    case "titre": return out.sort((a, b) => cmp(a.titre, b.titre));
-    case "serie": return out.sort((a, b) => cmp(a.serie || a.titre, b.serie || b.titre) || (num(a.tome) - num(b.tome)));
+    case "titre": // ancien choix mémorisé -> même ordre naturel
+    case "serie": return out.sort((a, b) => cmp(a.serie || a.titre, b.serie || b.titre) || (num(a.tome) - num(b.tome)) || cmp(a.titre, b.titre));
     case "auteur": return out.sort((a, b) => cmp(a.auteur || "~", b.auteur || "~") || cmp(a.titre, b.titre));
     case "annee": return out.sort((a, b) => num(b.annee) - num(a.annee) || cmp(a.titre, b.titre));
     case "note": return out.sort((a, b) => (b.note || 0) - (a.note || 0) || cmp(a.titre, b.titre));
     default: return out.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }
+}
+
+
+// Manga ? format explicite (bd | manga) sinon déduit de l'éditeur / du titre
+const MANGA_ED = /kana|pika|ki-?oon|kurokawa|tonkam|kaz[ée]|akata|doki|taifu|ototo|meian|naban|mangetsu|no[ée]ve|vega|crunchyroll|black box|soleil manga|gl[ée]nat manga|panini manga|delcourt.?tonkam/i;
+export function isManga(b) {
+  if (b.format) return b.format === "manga";
+  return MANGA_ED.test(b.editeur || "") || /\bmanga\b/i.test((b.titre || "") + " " + (b.serie || ""));
 }

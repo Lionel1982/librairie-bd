@@ -33,7 +33,7 @@ export default function FindModal({ books, refCatalog, onAdd, onScan, onClose })
   return (
     <div className="modal-overlay" onClick={e => e.target.classList.contains("modal-overlay") && onClose()}>
       <div className="modal" style={{ maxWidth: 640, maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
-        <div className="modal-header"><h2>🔎 Chercher un album</h2><button className="modal-close" onClick={onClose}>✕</button></div>
+        <div className="modal-header"><h2>➕ Ajouter un album</h2><button className="modal-close" onClick={onClose}>✕</button></div>
         <div className="find-search">
           <div className="find-input-wrap">
             <input type="text" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="Titre, série, auteur ou ISBN…" autoFocus />

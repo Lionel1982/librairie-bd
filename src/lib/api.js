@@ -60,7 +60,7 @@ export async function lookupByISBN(isbnRaw) {
           const info = j.items[0].volumeInfo || {};
           let gc = ""; if (info.imageLinks) gc = (info.imageLinks.thumbnail || info.imageLinks.smallThumbnail || "").replace("http:", "https:").replace("&edge=curl", "");
           const fc = cover || await resolveCover(v, gc);
-          const res = { titre: info.title || "", auteur: (info.authors || []).join(", "), editeur: info.publisher || "", annee: info.publishedDate ? parseInt(info.publishedDate.slice(0, 4)) : "", cover: fc, isbn: v };
+          const res = { pages: info.pageCount || "", titre: info.title || "", auteur: (info.authors || []).join(", "), editeur: info.publisher || "", annee: info.publishedDate ? parseInt(info.publishedDate.slice(0, 4)) : "", cover: fc, isbn: v };
           if (res.titre) return res; best = res;
         }
       } catch {}
@@ -198,12 +198,12 @@ export async function lookupByISBNRemote(isbnRaw) {
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 9000);
-    const r = await fetch("/api/isbn?v=2&isbn=" + encodeURIComponent(isbn), { signal: ctrl.signal });
+    const r = await fetch("/api/isbn?v=3&isbn=" + encodeURIComponent(isbn), { signal: ctrl.signal });
     clearTimeout(timer);
     if (!r.ok) return null;
     const j = await r.json();
     if (!j) return null;
-    return { titre: j.titre || "", serie: j.serie || "", tome: j.tome || "", auteur: j.auteur || "", editeur: j.editeur || "", annee: j.annee || "", cover: j.cover || "", isbn: j.isbn || isbn, source: j.source || "", found: !!j.found };
+    return { titre: j.titre || "", serie: j.serie || "", tome: j.tome || "", pages: j.pages || "", format: j.format || "", auteur: j.auteur || "", editeur: j.editeur || "", annee: j.annee || "", cover: j.cover || "", isbn: j.isbn || isbn, source: j.source || "", found: !!j.found };
   } catch { return null; }
 }
 

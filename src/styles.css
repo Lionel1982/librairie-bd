@@ -1130,3 +1130,21 @@ select:focus { outline: none; border-color: var(--accent); }
   color: inherit; font-size: 13px; cursor: pointer;
 }
 .sort-chip.active { background: #7c5cff; border-color: transparent; color: #fff; font-weight: 700; }
+
+
+/* ===== v3.17 : index alphabétique en carrés, bouton actif, restauration, étagère ===== */
+.alpha-index { gap: 5px; padding: 6px; right: 6px; }
+.alpha-index button {
+  width: 36px; height: 36px; min-height: 36px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; font-weight: 800; color: #fff;
+  border: 2px solid #7c5cff; border-radius: 8px; background: rgba(124,92,255,.18);
+}
+.alpha-index button:hover, .alpha-index button:active { background: #7c5cff; border-color: #a58bff; }
+.topbar-actions .action-active { border-color: #7c5cff; box-shadow: 0 0 0 2px rgba(124,92,255,.35); }
+.restore-search { width: 100%; margin: 6px 0 10px; }
+.restore-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; color: var(--text-dim, #9a9ab0); }
+.restore-item { cursor: pointer; justify-content: flex-start; gap: 12px; }
+.restore-item input { width: 20px; height: 20px; accent-color: #7c5cff; flex: 0 0 auto; }
+.restore-bar { position: sticky; bottom: 0; display: flex; gap: 8px; justify-content: flex-end; padding: 10px 0; background: var(--bg-card, #15151f); }
+.spine-manga .spine-label { font-size: 9px; }

@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.16.0-supabase";
+const APP_VERSION = "3.17.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -212,6 +212,15 @@ function LibraryApp({ user }) {
     } catch { notify("⚠️ Migration impossible"); }
   }
 
+  // Remet des albums de l'import BDGest supprimés par erreur
+  async function restoreMissing(items) {
+    const toAdd = items.filter(nb => !S.findDuplicate(books, nb));
+    const saved = toAdd.length ? await lib.addBooksBulk(toAdd) : [];
+    if (saved.length) setTimeout(() => lib.enrichCovers(saved.map(s => s.id)), 300);
+    notify("♻️ " + saved.length + " album(s) remis");
+    return saved.length;
+  }
+
   async function logout() { await supabase.auth.signOut(); }
 
   const tabs = [
@@ -244,8 +253,8 @@ function LibraryApp({ user }) {
           </Menu>
           <h1 className="logo">📚 Ma Bibliothèque BD</h1>
           <div className="topbar-actions">
-            <button className="action-tile action-primary" title="Chercher un album" onClick={() => setFindOpen(true)}>
-              <span className="action-icon">🔎</span><span className="action-label">Chercher</span>
+            <button className={"action-tile" + (filterOpen ? " action-active" : "")} title="Rechercher dans ma bibliothèque" onClick={() => setFilterOpen(o => !o)}>
+              <span className="action-icon">🔍</span><span className="action-label">Rechercher</span>
             </button>
             <button className={"action-tile" + (pending ? " action-pending" : "")} title={pending ? pending + " album(s) à trier" : "Trier"} onClick={() => setTinderOpen(true)}>
               <span className="action-icon">🔥</span><span className="action-label">Trier</span>
@@ -254,8 +263,8 @@ function LibraryApp({ user }) {
             <button className="action-tile" title="Compléter" onClick={() => setPlanOpen(true)}>
               <span className="action-icon">🎯</span><span className="action-label">Compléter</span>
             </button>
-            <button className="action-tile" title="Rechercher dans ma bibliothèque" onClick={() => setFilterOpen(o => !o)}>
-              <span className="action-icon">📚</span><span className="action-label">Filtrer</span>
+            <button className="action-tile action-primary" title="Ajouter un album (recherche ou scan)" onClick={() => setFindOpen(true)}>
+              <span className="action-icon">➕</span><span className="action-label">Ajouter</span>
             </button>
           </div>
         </div>
@@ -323,7 +332,7 @@ function LibraryApp({ user }) {
         <Scanner onAddMany={addScannedMany} refCatalog={refCatalog} onClose={() => setScanOpen(false)} />
       )}
       {settingsOpen && (
-        <SettingsModal blacklist={blacklist}
+        <SettingsModal blacklist={blacklist} books={books} refCatalog={refCatalog} onRestore={restoreMissing} onFetchPages={lib.fetchPagesFormat}
           onUnblacklistSerie={unblSerie} onUnblacklistAlbum={unblAlbum}
           onRefreshCovers={lib.refreshCoversBnF}
           onCleanupJunk={lib.cleanupJunk}

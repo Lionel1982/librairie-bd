@@ -1,6 +1,6 @@
 // Hook central : charge les données depuis Supabase et expose des actions async.
 // Modèle optimiste : on met à jour l'état local immédiatement, puis on persiste.
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import * as DB from "./db.js";
 import * as S from "./store.js";
 import * as API from "./api.js";
@@ -11,6 +11,8 @@ export function useLibrary(userId) {
   const [seriesMeta, setSeriesMeta] = useState({});
   const [blacklist, setBlacklist] = useState({ series: [], albums: [] });
   const [loading, setLoading] = useState(true);
+  const booksRef = useRef([]);                       // dernière liste connue (lecture fiable hors rendu)
+  useEffect(() => { booksRef.current = books; }, [books]);
 
   // Chargement initial à la connexion
   useEffect(() => {
@@ -103,7 +105,7 @@ export function useLibrary(userId) {
   const enrichCovers = useCallback(async (ids) => {
     const idSet = ids && ids.length ? new Set(ids) : null;
     let targets = [];
-    setBooks(bs => { targets = bs.filter(b => (!idSet || idSet.has(b.id)) && (b.titre || b.isbn) && (!b.cover || !b._coverOk)); return bs; });
+    targets = booksRef.current.filter(b => (!idSet || idSet.has(b.id)) && (b.titre || b.isbn) && (!b.cover || !b._coverOk));
     for (const b of targets) {
       let patch = null;
       if (b.cover && await API.validateImage(b.cover)) patch = { _coverOk: true };
@@ -151,7 +153,7 @@ export function useLibrary(userId) {
   // couverture valide (BnF -> Google -> OpenLibrary) via /api/cover. onProgress(i,total,titre).
   const refreshCoversBnF = useCallback(async (onProgress) => {
     let targets = [];
-    setBooks(bs => { targets = bs.filter(b => (b.isbn && String(b.isbn).replace(/[^0-9Xx]/g, "").length >= 10)); return bs; });
+    targets = booksRef.current.filter(b => (b.isbn && String(b.isbn).replace(/[^0-9Xx]/g, "").length >= 10));
     let updated = 0;
     for (let i = 0; i < targets.length; i++) {
       const b = targets[i];
@@ -169,12 +171,33 @@ export function useLibrary(userId) {
     return { updated, total: targets.length };
   }, []);
 
+  // Récupère nombre de pages + format (bd/manga) via /api/isbn pour l'étagère. onProgress(i,total,titre)
+  const fetchPagesFormat = useCallback(async (onProgress) => {
+    const targets = booksRef.current.filter(b => S.cleanIsbn(b.isbn).length >= 10 && (b.pages === "" || b.pages == null || !b.format));
+    let updated = 0;
+    for (let i = 0; i < targets.length; i++) {
+      const b = targets[i];
+      if (onProgress) onProgress(i + 1, targets.length, b.titre || b.isbn);
+      const r = await API.lookupByISBNRemote(b.isbn);
+      const patch = {};
+      if (r && r.pages && (b.pages === "" || b.pages == null)) patch.pages = Number(r.pages);
+      if (r && r.format && !b.format) patch.format = r.format;
+      if (Object.keys(patch).length) {
+        await DB.updateBook(b.id, patch);           // lève une erreur si le SQL v3.17 manque -> on s'arrête
+        setBooks(bs => bs.map(x => x.id === b.id ? { ...x, ...patch } : x));
+        updated++;
+      }
+      await new Promise(res => setTimeout(res, 80));
+    }
+    return { updated, total: targets.length };
+  }, []);
+
   return {
     books, refCatalog, seriesMeta, blacklist, loading,
     setBooks, // exposé pour cas particuliers
     addBook, addBooksBulk, editBook, removeBook,
     replaceCatalog, setSerieMeta,
     addBlSerie, addBlAlbum, removeBlSerie, removeBlAlbum,
-    enrichCovers, refreshCoversBnF, cleanupJunk,
+    enrichCovers, refreshCoversBnF, cleanupJunk, fetchPagesFormat,
   };
 }

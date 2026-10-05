@@ -13,6 +13,7 @@ export function rowToBook(r) {
     isbn: r.isbn || "", statut: r.statut || "jai",
     note: r.note || 0, commentaire: r.commentaire || "",
     cover: r.cover || "", _coverOk: !!r.cover_ok,
+    pages: r.pages == null ? "" : r.pages, format: r.format || "",
     createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
   };
 }
@@ -27,6 +28,8 @@ function bookToRow(b, userId) {
     note: Number(b.note) || 0, commentaire: b.commentaire || "",
     cover: b.cover || "", cover_ok: !!b._coverOk,
   };
+  if (b.pages !== "" && b.pages != null && !isNaN(Number(b.pages))) row.pages = Number(b.pages);
+  if (b.format) row.format = b.format;
   // id : seulement si c'est un uuid (sinon laissé à Postgres)
   if (b.id && /^[0-9a-f-]{36}$/i.test(b.id)) row.id = b.id;
   return row;
@@ -49,8 +52,18 @@ function patchToRow(patch) {
   if (has("commentaire")) row.commentaire = patch.commentaire || "";
   if (has("cover")) row.cover = patch.cover || "";
   if (has("_coverOk")) row.cover_ok = !!patch._coverOk;
+  if (has("pages")) row.pages = (patch.pages === "" || patch.pages == null || isNaN(Number(patch.pages))) ? null : Number(patch.pages);
+  if (has("format")) row.format = patch.format || "";
   return row;
 }
+
+// Colonnes ajoutées en v3.17 : si le SQL n'a pas encore été exécuté, on réessaie sans elles
+const NEW_COLS = ["pages", "format"];
+function missingColErr(error) {
+  const m = (error && error.message) || "";
+  return !!error && /column|schema cache/i.test(m) && NEW_COLS.some(c => m.includes(c));
+}
+function stripNewCols(row) { const r = { ...row }; NEW_COLS.forEach(c => delete r[c]); return r; }
 
 // id de l'utilisateur connecté, lu dans la session locale (pas d'aller-retour réseau).
 // La sécurité reste garantie côté serveur par les règles RLS.
@@ -67,7 +80,9 @@ export async function fetchBooks() {
 }
 export async function insertBook(b) {
   const userId = await uid(); if (!userId) return null;
-  const { data, error } = await supabase.from("books").insert(bookToRow(b, userId)).select().single();
+  const row = bookToRow(b, userId);
+  let { data, error } = await supabase.from("books").insert(row).select().single();
+  if (missingColErr(error)) ({ data, error } = await supabase.from("books").insert(stripNewCols(row)).select().single());
   if (error) { console.warn("insertBook", error); return null; }
   return rowToBook(data);
 }
@@ -79,7 +94,9 @@ export async function insertBooks(list) {
   // insertion par lots de 200 pour éviter les payloads trop gros
   const out = [];
   for (let i = 0; i < rows.length; i += 200) {
-    const { data, error } = await supabase.from("books").insert(rows.slice(i, i + 200)).select();
+    const chunk = rows.slice(i, i + 200);
+    let { data, error } = await supabase.from("books").insert(chunk).select();
+    if (missingColErr(error)) ({ data, error } = await supabase.from("books").insert(chunk.map(stripNewCols)).select());
     if (error) { console.warn("insertBooks", error); const e = new Error(error.message || JSON.stringify(error)); e._bdlib = true; e._code = error.code; e._details = error.details; e._hint = error.hint; throw e; }
     (data || []).forEach(r => out.push(rowToBook(r)));
   }
@@ -89,7 +106,12 @@ export async function updateBook(id, patch) {
   const userId = await uid(); if (!userId) return null;
   const row = patchToRow(patch);               // seulement les champs fournis
   if (Object.keys(row).length === 0) return null;
-  const { data, error } = await supabase.from("books").update(row).eq("id", id).select();
+  let { data, error } = await supabase.from("books").update(row).eq("id", id).select();
+  if (missingColErr(error)) {
+    const r2 = stripNewCols(row);
+    if (!Object.keys(r2).length) { const e = new Error("Colonnes pages/format absentes : exécute le SQL de la v3.17 dans Supabase"); e._bdlib = true; throw e; }
+    ({ data, error } = await supabase.from("books").update(r2).eq("id", id).select());
+  }
   if (error) { console.warn("updateBook", error); const e = new Error(error.message || "update refusé"); e._bdlib = true; throw e; }
   if (!data || data.length === 0) {
     const e = new Error("0 ligne modifiée (session expirée ?)"); e._bdlib = true; e._zero = true; throw e;

@@ -49,7 +49,7 @@ async function tryGoogle(isbn) {
     const v = j.items[0].volumeInfo || {};
     let cover = "";
     if (v.imageLinks) cover = (v.imageLinks.thumbnail || v.imageLinks.smallThumbnail || "").replace("http:", "https:").replace("&edge=curl", "");
-    if (v.title) return { titre: v.title + (v.subtitle ? " — " + v.subtitle : ""), auteur: (v.authors || []).join(", "), editeur: v.publisher || "", annee: (v.publishedDate || "").slice(0, 4), cover, source: "google" };
+    if (v.title) return { titre: v.title + (v.subtitle ? " — " + v.subtitle : ""), auteur: (v.authors || []).join(", "), editeur: v.publisher || "", annee: (v.publishedDate || "").slice(0, 4), pages: v.pageCount || "", cover, source: "google" };
   }
   return null;
 }
@@ -66,7 +66,7 @@ async function tryOpenLibrary(isbn) {
       }
     } catch {}
     const cover = "https://covers.openlibrary.org/b/isbn/" + isbn + "-L.jpg";
-    return { titre: j.title + (j.subtitle ? " — " + j.subtitle : ""), auteur, editeur: (j.publishers && j.publishers[0]) || "", annee: (j.publish_date && (String(j.publish_date).match(/\d{4}/) || [""])[0]) || "", cover, source: "openlibrary" };
+    return { titre: j.title + (j.subtitle ? " — " + j.subtitle : ""), auteur, editeur: (j.publishers && j.publishers[0]) || "", annee: (j.publish_date && (String(j.publish_date).match(/\d{4}/) || [""])[0]) || "", pages: j.number_of_pages || "", cover, source: "openlibrary" };
   }
   return null;
 }
@@ -234,7 +234,12 @@ async function tryBnF(isbn) {
   if (serie && tome && partTitle) full = serie + " — T." + tome + " — " + partTitle;
   else if (serie && tome) full = serie + " — T." + tome;
   else if (serie && partTitle) full = serie + " — " + partTitle;
-  return { titre: full, auteur, editeur: editeur || "", annee, cover, serie, tome, source: "bnf" };
+  // 215$a « 1 vol. (204 p.) » -> nombre de pages ; 101$c = langue d'origine (jpn/kor => manga/manhwa)
+  const pm = unimarcSub(xml, "215", "a").match(/(\d{2,4})\s*p\b/);
+  const pages = pm ? parseInt(pm[1], 10) : "";
+  const langOrig = unimarcAllSub(xml, "101", "c").join(" ");
+  const manga = /\b(jpn|kor)\b/i.test(langOrig) || /manga|seinen|sh[oō]nen|sh[oō]jo|josei/i.test(c225);
+  return { titre: full, auteur, editeur: editeur || "", annee, cover, serie, tome, pages, format: manga ? "manga" : "bd", source: "bnf" };
 }
 
 // ---- Source 4 : ISBNdb (API à clé, en DERNIER recours pour économiser le quota) ----
