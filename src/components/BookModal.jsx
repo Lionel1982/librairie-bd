@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { OWNED, STATUS_LABELS, amazonUrl, cleanIsbn, extractTome } from "../lib/store.js";
+import React, { useState, useMemo } from "react";
+import { OWNED, STATUS_LABELS, amazonUrl, cleanIsbn, extractTome, buildSeriesList } from "../lib/store.js";
+import SerieInput from "./SerieInput.jsx";
 import { lookupByISBN, lookupByISBNRemote, searchCandidates } from "../lib/api.js";
 import CoverPicker from "./CoverPicker.jsx";
 
@@ -12,6 +13,7 @@ export default function BookModal({ id, books, refCatalog, onSave, onDelete, onC
   const [msg, setMsg] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
+  const seriesList = useMemo(() => buildSeriesList(books, id), [books, id]);
 
   async function reconcile() {
     setMsg("🔎 Recherche…");
@@ -21,7 +23,7 @@ export default function BookModal({ id, books, refCatalog, onSave, onDelete, onC
       if (!info || !info.titre) { try { const web = await lookupByISBN(isbn); if (web && web.titre) info = web; else info = info || web || {}; } catch { info = info || {}; } }
       info = info || {};
       const props = [];
-      ["titre","auteur","editeur","annee","cover"].forEach(k => { if (info[k] && String(info[k]) !== String(f[k])) props.push({ field: k, value: info[k] }); });
+      ["titre","serie","tome","auteur","editeur","annee","cover"].forEach(k => { if (info[k] && String(info[k]) !== String(f[k])) props.push({ field: k, value: info[k] }); });
       setSugg(props); setMsg(props.length ? props.length + " proposition(s) (ISBN)" : "✅ Rien à changer"); return;
     }
     const known = f.tome !== "" ? Number(f.tome) : "";
@@ -48,10 +50,11 @@ export default function BookModal({ id, books, refCatalog, onSave, onDelete, onC
   }
 
   const propFor = (field) => sugg.find(p => p.field === field);
-  const Field = ({ label, k, type = "text", span }) => {
+  // fonction de rendu (PAS un composant) : sinon React recrée l'input à chaque frappe et le focus saute
+  const renderField = ({ label, k, type = "text", span }) => {
     const p = propFor(k);
     return (
-      <div className={"form-field" + (span ? " span-2" : "")}>
+      <div key={k} className={"form-field" + (span ? " span-2" : "")}>
         <label>{label}</label>
         <input type={type} value={f[k]} onChange={e => set(k, e.target.value)} />
         {p && <div className="field-suggest"><span className="fs-label">Proposé :</span>{k === "cover" ? <img className="fs-cover" src={p.value} alt="" /> : <span className="fs-value">{String(p.value)}</span>}<span className="fs-actions"><button className="fs-apply" onClick={() => applyProp(p)}>✓</button><button className="fs-skip" onClick={() => setSugg(s => s.filter(x => x !== p))}>✕</button></span></div>}
@@ -70,13 +73,16 @@ export default function BookModal({ id, books, refCatalog, onSave, onDelete, onC
             <div className="cover-inputs"><label>Couverture (URL)</label><input type="text" value={f.cover} onChange={e => set("cover", e.target.value)} placeholder="https://..." /></div>
           </div>
           <div className="form-grid">
-            <Field label="Titre *" k="titre" span />
-            <Field label="ISBN" k="isbn" />
-            <Field label="Série" k="serie" />
-            <Field label="Tome" k="tome" type="number" />
-            <Field label="Auteur" k="auteur" />
-            <Field label="Éditeur" k="editeur" />
-            <Field label="Année" k="annee" type="number" />
+            {renderField({ label: "Titre *", k: "titre", span: true })}
+            {renderField({ label: "ISBN", k: "isbn" })}
+            <div className="form-field"><label>Série</label>
+              <SerieInput value={f.serie} onChange={v => set("serie", v)} seriesList={seriesList} tome={f.tome} />
+              {propFor("serie") && <div className="field-suggest"><span className="fs-label">Proposé :</span><span className="fs-value">{String(propFor("serie").value)}</span><span className="fs-actions"><button className="fs-apply" onClick={() => applyProp(propFor("serie"))}>✓</button><button className="fs-skip" onClick={() => setSugg(s => s.filter(x => x.field !== "serie"))}>✕</button></span></div>}
+            </div>
+            {renderField({ label: "Tome", k: "tome", type: "number" })}
+            {renderField({ label: "Auteur", k: "auteur" })}
+            {renderField({ label: "Éditeur", k: "editeur" })}
+            {renderField({ label: "Année", k: "annee", type: "number" })}
             <div className="form-field"><label>Statut</label>
               <select value={f.statut} onChange={e => set("statut", e.target.value)}>{Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
             </div>

@@ -19,7 +19,7 @@ import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 
-const APP_VERSION = "3.15.0-supabase";
+const APP_VERSION = "3.16.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -44,6 +44,9 @@ function LibraryApp({ user }) {
   const [toast, setToast] = useState("");
   const [scrolled, setScrolled] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [sortMode, setSortMode] = useState(() => { try { return localStorage.getItem("bdlib-sort") || "recent"; } catch { return "recent"; } });
+  const [sortOpen, setSortOpen] = useState(false);
+  function chooseSort(m) { setSortMode(m); setSortOpen(false); try { localStorage.setItem("bdlib-sort", m); } catch {} }
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -74,14 +77,21 @@ function LibraryApp({ user }) {
 
   // ---------- actions ----------
   async function addScannedMany(list) {
-    const toAdd = list.filter(nb => !S.findDuplicate(books, nb));
-    const skipped = list.length - toAdd.length;
+    const toAdd = [], dups = [];
+    list.forEach(nb => {
+      const d = S.findDuplicate(books, nb) || S.findDuplicate(toAdd, nb);
+      if (d) dups.push(d); else toAdd.push(nb);
+    });
+    const skipped = dups.length;
     try {
       const saved = toAdd.length ? await lib.addBooksBulk(toAdd) : [];
       if (saved.length) setTimeout(() => lib.enrichCovers(saved.map(s => s.id)), 300);
       const toSort = saved.filter(s => s.statut === "a-confirmer").length;
       let msg = "📷 " + saved.length + " album(s) ajouté(s)" + (toSort ? " → 🔥 à trier" : " à ta collection");
-      if (skipped) msg += " · " + skipped + " doublon(s) ignoré(s)";
+      if (skipped) {
+        const where = dups.slice(0, 2).map(d => (d.titre || d.isbn) + " [" + (S.STATUS_LABELS[d.statut] || d.statut) + "]").join(", ");
+        msg += " · " + skipped + " déjà présent(s) : " + where + (skipped > 2 ? "…" : "");
+      }
       notify(msg);
     } catch (err) {
       notify("❌ Ajout scan : " + (err?.message || "erreur"));
@@ -253,9 +263,21 @@ function LibraryApp({ user }) {
 
       <div className="mode-tabs">
         {tabs.map(([m, label]) => (
-          <button key={m} className={"mode-tab" + (viewMode === m ? " active" : "")} onClick={() => setViewMode(m)}>{label}</button>
+          <button key={m} className={"mode-tab" + (viewMode === m ? " active" : "")}
+            onClick={() => { if (viewMode === m && (m === "biblio" || m === "wishlist")) setSortOpen(o => !o); else { setViewMode(m); setSortOpen(false); } }}>
+            {label}{viewMode === m && (m === "biblio" || m === "wishlist") ? <span className="tab-sort-hint"> ▾</span> : null}
+          </button>
         ))}
       </div>
+
+      {sortOpen && (viewMode === "biblio" || viewMode === "wishlist") && (
+        <div className="sort-bar">
+          <span className="sort-bar-label">Trier par</span>
+          {Object.entries(S.SORT_LABELS).map(([k, l]) => (
+            <button key={k} className={"sort-chip" + (sortMode === k ? " active" : "")} onClick={() => chooseSort(k)}>{l}</button>
+          ))}
+        </div>
+      )}
 
       {filterOpen && (
         <div className="floating-filter">
@@ -267,9 +289,10 @@ function LibraryApp({ user }) {
       )}
 
       <main className="library">
-        {viewMode === "biblio" && <LibraryGrid books={ownedBooks} query={query} onOpen={setEditingId} />}
-        {viewMode === "wishlist" && <LibraryGrid books={wishBooks} query={query} onOpen={setEditingId} wishlist />}
-        {viewMode === "series" && <SeriesView books={libBooks} seriesMeta={seriesMeta} onSetSerieMeta={(key, meta) => lib.setSerieMeta(key, meta)} query={query} blacklist={blacklist} onOpen={setEditingId} />}
+        {viewMode === "biblio" && <LibraryGrid books={ownedBooks} query={query} onOpen={setEditingId} sort={sortMode} />}
+        {viewMode === "wishlist" && <LibraryGrid books={wishBooks} query={query} onOpen={setEditingId} wishlist sort={sortMode} />}
+        {viewMode === "series" && <SeriesView books={libBooks} seriesMeta={seriesMeta} onSetSerieMeta={(key, meta) => lib.setSerieMeta(key, meta)} query={query} blacklist={blacklist} onOpen={setEditingId}
+          onEditBook={(id, patch) => lib.editBook(id, patch).then(() => notify("🗂️ Série mise à jour")).catch(e => notify("❌ Non enregistré : " + (e?.message || "erreur")))} />}
         {viewMode === "etagere" && <ShelfView books={libBooks} query={query} onOpen={setEditingId} />}
         {viewMode === "trous" && <GapsView books={libBooks} seriesMeta={seriesMeta} query={query} blacklist={blacklist} onAddWish={addGapWish} onBlacklistSerie={blSerie} onBlacklistAlbum={blAlbum} />}
         {viewMode === "stats" && <StatsView books={libBooks} seriesMeta={seriesMeta} />}

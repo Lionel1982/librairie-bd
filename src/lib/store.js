@@ -38,7 +38,9 @@ export function findDuplicate(books, cand, ignoreId) {
   const ct = normTitle(cand.titre), ctome = cand.tome || "";
   return books.find(b => {
     if (ignoreId && b.id === ignoreId) return false;
-    if (ci && b.isbn && isbnVariants(cleanIsbn(b.isbn)).some(v => cv.includes(v))) return true;
+    const bi = cleanIsbn(b.isbn);
+    if (ci && bi && isbnVariants(bi).some(v => cv.includes(v))) return true;
+    if (ci.length >= 10 && bi.length >= 10) return false; // ISBN différents => albums différents (tomes d'une série)
     if (ct && normTitle(b.titre) === ct) {
       if (ctome !== "" && b.tome !== "" && b.tome != null) return String(b.tome) === String(ctome);
       return true;
@@ -115,4 +117,38 @@ export function coverThumbUrl(isbnRaw) {
   const vs = isbnVariants(cleanIsbn(isbnRaw));
   const i = vs.find(v => v.length === 13) || vs[0] || "";
   return (i.length === 13 || i.length === 10) ? "/api/cover?img=1&isbn=" + i : "";
+}
+
+
+// Liste des séries existantes : [{ name, count, tomes:[1,2,4] }] (exclut éventuellement un album)
+export function buildSeriesList(books, excludeId) {
+  const m = new Map();
+  (books || []).forEach(b => {
+    if (excludeId && b.id === excludeId) return;
+    const name = (b.serie || "").trim(); if (!name) return;
+    const k = normTitle(name);
+    const e = m.get(k) || { name, count: 0, tomes: [] };
+    e.count++;
+    if (b.tome !== "" && b.tome != null && !e.tomes.includes(Number(b.tome))) e.tomes.push(Number(b.tome));
+    m.set(k, e);
+  });
+  return [...m.values()].map(e => ({ ...e, tomes: e.tomes.sort((a, b) => a - b) }))
+    .sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
+}
+
+// Tri des albums. mode : recent | ancien | titre | serie | auteur | annee | note
+export const SORT_LABELS = { recent: "🕒 Ajout récent", ancien: "🕰️ Ajout ancien", titre: "🔤 Titre A→Z", serie: "🗂️ Série puis tome", auteur: "✍️ Auteur", annee: "📅 Année", note: "⭐ Note" };
+export function sortBooks(list, mode) {
+  const cmp = (a, b) => String(a || "").localeCompare(String(b || ""), "fr", { sensitivity: "base", numeric: true });
+  const num = (v) => (v === "" || v == null ? -1 : Number(v));
+  const out = list.slice();
+  switch (mode) {
+    case "ancien": return out.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    case "titre": return out.sort((a, b) => cmp(a.titre, b.titre));
+    case "serie": return out.sort((a, b) => cmp(a.serie || a.titre, b.serie || b.titre) || (num(a.tome) - num(b.tome)));
+    case "auteur": return out.sort((a, b) => cmp(a.auteur || "~", b.auteur || "~") || cmp(a.titre, b.titre));
+    case "annee": return out.sort((a, b) => num(b.annee) - num(a.annee) || cmp(a.titre, b.titre));
+    case "note": return out.sort((a, b) => (b.note || 0) - (a.note || 0) || cmp(a.titre, b.titre));
+    default: return out.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }
 }

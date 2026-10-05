@@ -190,8 +190,20 @@ async function tryBnF(isbn) {
   if (nb && nb[1] === "0") return null;
 
   // UNIMARC : 200$a titre, 210$c éditeur (prendre le DERNIER $c), 210$d date, 225$a collection(série)
-  const titre = unimarcSub(xml, "200", "a");
-  const serie = unimarcSub(xml, "225", "a") || unimarcSub(xml, "461", "t");
+  // 200$a titre, 200$h n° de partie, 200$i titre de partie ; 461$t/$v = série et n° de volume.
+  // 225$a = collection ÉDITEUR (ex. « Soleil manga seinen ») : ce n'est PAS la série.
+  const t200 = unimarcSub(xml, "200", "a");
+  const h200 = unimarcSub(xml, "200", "h");
+  const i200 = unimarcSub(xml, "200", "i");
+  const s461 = unimarcSub(xml, "461", "t");
+  const v461 = unimarcSub(xml, "461", "v");
+  const c225 = unimarcSub(xml, "225", "a");
+  const numOf = (s) => { const m = String(s || "").match(/\d{1,3}/); return m ? parseInt(m[0], 10) : ""; };
+  const tome = numOf(h200) || numOf(v461) || "";
+  const isEditorCollection = /manga|seinen|sh[oō]nen|sh[oō]jo|collection|poche|[ée]dition|soleil|gl[ée]nat|kana|pika|ki-oon|kurokawa|delcourt|dargaud|dupuis|casterman|lombard|panini|urban/i.test(c225);
+  const serie = s461 || ((h200 || i200) ? t200 : "") || (c225 && !isEditorCollection ? c225 : "");
+  const partTitle = i200 || (t200 && serie && t200.toLowerCase() !== serie.toLowerCase() ? t200 : "");
+  const titre = t200;
   const authNames = [];
   ["700", "701", "702"].forEach(f => {
     const noms = unimarcAllSub(xml, f, "a");
@@ -217,13 +229,12 @@ async function tryBnF(isbn) {
   if (ark) cover = "https://catalogue.bnf.fr/couverture?appName=NE&idArk=ark:/12148/" + ark[1] + "&couverture=1";
 
   if (!titre) return null;
-  // concatène série + titre sans doublon (échappe les caractères regex de la série)
+  // même format que l'import BDGest : « Série — T.n — Titre »
   let full = titre;
-  if (serie) {
-    const esc = serie.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    if (!new RegExp(esc, "i").test(titre)) full = serie + " — " + titre;
-  }
-  return { titre: full, auteur, editeur: editeur || "", annee, cover, serie, source: "bnf" };
+  if (serie && tome && partTitle) full = serie + " — T." + tome + " — " + partTitle;
+  else if (serie && tome) full = serie + " — T." + tome;
+  else if (serie && partTitle) full = serie + " — " + partTitle;
+  return { titre: full, auteur, editeur: editeur || "", annee, cover, serie, tome, source: "bnf" };
 }
 
 // ---- Source 4 : ISBNdb (API à clé, en DERNIER recours pour économiser le quota) ----

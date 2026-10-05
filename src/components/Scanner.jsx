@@ -4,6 +4,9 @@ import { lookupByISBN, lookupByISBNRemote } from "../lib/api.js";
 import { catalogLookup, catalogUpsert } from "../lib/db.js";
 import { cleanIsbn, lookupInCatalog, getScanDirect, setScanDirect } from "../lib/store.js";
 
+// attend au plus `ms` millisecondes (une source lente ne bloque plus tout le lot)
+const withTimeout = (p, ms) => Promise.race([Promise.resolve(p).catch(() => null), new Promise(r => setTimeout(() => r(null), ms))]);
+
 // Scanner code-barre — mode "scan en lot puis complétion".
 // On accumule les ISBN scannés (fluide, pas de lookup pendant le scan),
 // puis on complète les infos en lot à la validation.
@@ -65,16 +68,16 @@ export default function Scanner({ onAddMany, refCatalog = [], onClose }) {
     for (let i = 0; i < list.length; i++) {
       const isbn = list[i];
       setProgress("Complétion " + (i + 1) + "/" + list.length + " — " + isbn + "…");
-      let info = lookupInCatalog(refCatalog, isbn) || {};   // 1) catalogue BDGest local (instantané)
+      let info = lookupInCatalog(refCatalog, isbn) || {};   // 1) catalogue BDGest perso (instantané)
       let fromWeb = false;
-      if (!info.titre) { try { const shared = await catalogLookup(isbn); if (shared && shared.titre) info = shared; } catch {} } // 2) catalogue COMMUN partagé (Supabase)
-      if (!info.titre) { try { const r = await lookupByISBNRemote(isbn); if (r && r.titre) { info = r; fromWeb = true; } else if (r && r.cover && !info.cover) info = { ...info, cover: r.cover }; } catch {} } // 3) /api/isbn (serveur multi-sources)
-      if (!info.titre) { try { const web = await lookupByISBN(isbn); if (web && web.titre) { info = web; fromWeb = true; } } catch {} } // 4) API client direct (dernier secours)
-      // alimente le catalogue COMMUN pour que tous en profitent (si résolu via le web)
-      if (fromWeb && info.titre) { try { await catalogUpsert(isbn, { ...info, source: info.source || "scan" }); } catch {} }
+      if (!info.titre) { const r = await withTimeout(lookupByISBNRemote(isbn), 12000); if (r && r.titre) { info = r; fromWeb = true; } else if (r && r.cover && !info.cover) info = { ...info, cover: r.cover }; } // 2) serveur (BnF…)
+      if (!info.titre) { const sh = await withTimeout(catalogLookup(isbn), 5000); if (sh && sh.titre) info = { ...sh, cover: sh.cover || info.cover || "" }; } // 3) catalogue commun
+      if (!info.titre) { const web = await withTimeout(lookupByISBN(isbn), 10000); if (web && web.titre) { info = web; fromWeb = true; } } // 4) dernier secours
+      // alimente / corrige le catalogue COMMUN pour tout le monde
+      if (fromWeb && info.titre) { await withTimeout(catalogUpsert(isbn, { ...info, source: info.source || "scan" }), 5000); }
       books.push({
         statut: direct ? "jai" : "a-confirmer", note: 0, commentaire: direct ? "Scanné" : "Scanné (à confirmer)",
-        titre: info.titre || ("ISBN " + isbn), serie: "", tome: "",
+        titre: info.titre || ("ISBN " + isbn), serie: info.serie || "", tome: (info.tome === undefined || info.tome === null) ? "" : info.tome,
         auteur: info.auteur || "", editeur: info.editeur || "", annee: info.annee || "",
         isbn: info.isbn || isbn, cover: info.cover || "", _coverOk: false, // vérifiée/complétée après ajout
       });
