@@ -239,7 +239,7 @@ async function tryBnF(isbn) {
   const pages = pm ? parseInt(pm[1], 10) : "";
   const langOrig = unimarcAllSub(xml, "101", "c").join(" ");
   const manga = /\b(jpn|kor)\b/i.test(langOrig) || /manga|seinen|sh[oō]nen|sh[oō]jo|josei/i.test(c225);
-  return { titre: full, auteur, editeur: editeur || "", annee, cover, serie, tome, pages, format: manga ? "manga" : "bd", source: "bnf" };
+  return { titre: full, auteur, editeur: editeur || "", annee, cover, serie, tome, pages, format: manga ? "manga" : (/\beng\b/i.test(langOrig) ? "comics" : "bd"), source: "bnf" };
 }
 
 // ---- Source 4 : ISBNdb (API à clé, en DERNIER recours pour économiser le quota) ----

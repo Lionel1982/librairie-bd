@@ -4,7 +4,7 @@ import Cover from "./Cover.jsx";
 import { OWNED, normTitle, isSerieBlacklisted, isAlbumBlacklisted } from "../lib/store.js";
 import { wikipediaSeriesTomes } from "../lib/api.js";
 
-export default function SeriesView({ books, seriesMeta, setSeriesMeta, onSetSerieMeta, query, blacklist, onOpen, onEditBook }) {
+export default function SeriesView({ books, seriesMeta, setSeriesMeta, onSetSerieMeta, query, blacklist, onOpen, onEditBook, onOpenRangement, suggCount }) {
   const [busy, setBusy] = useState("");
   const [moveFor, setMoveFor] = useState(null);       // album dont on change la série
   const [showIndex, setShowIndex] = useState(false);  // index alphabétique visible (au scroll)
@@ -55,6 +55,7 @@ export default function SeriesView({ books, seriesMeta, setSeriesMeta, onSetSeri
   return (
     <>
       <div className="series-toolbar" style={{ gridColumn: "1/-1" }}>
+        {onOpenRangement && <button className={"btn " + (suggCount ? "btn-primary" : "btn-ghost")} onClick={onOpenRangement}>🧭 Ranger{suggCount ? " (" + suggCount + ")" : ""}</button>}
         <button className="btn btn-ghost" onClick={verifyAll}>📖 Vérifier les tomes (Wikipédia)</button>
         {busy && <span style={{ color: "var(--text-dim)", fontSize: 13 }}>⏳ {busy}…</span>}
       </div>

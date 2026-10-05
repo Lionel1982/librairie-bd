@@ -18,8 +18,10 @@ import SettingsModal from "./components/SettingsModal.jsx";
 import Scanner from "./components/Scanner.jsx";
 import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
+import RangementModal from "./components/RangementModal.jsx";
+import { buildSuggestions } from "./lib/suggest.js";
 
-const APP_VERSION = "3.17.0-supabase";
+const APP_VERSION = "3.18.0-supabase";
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -47,6 +49,12 @@ function LibraryApp({ user }) {
   const [sortMode, setSortMode] = useState(() => { try { return localStorage.getItem("bdlib-sort") || "recent"; } catch { return "recent"; } });
   const [sortOpen, setSortOpen] = useState(false);
   function chooseSort(m) { setSortMode(m); setSortOpen(false); try { localStorage.setItem("bdlib-sort", m); } catch {} }
+  const [rangeOpen, setRangeOpen] = useState(false);
+  const [ignoredSugg, setIgnoredSugg] = useState(() => { try { return new Set(JSON.parse(localStorage.getItem("bdlib-sugg-ignored") || "[]")); } catch { return new Set(); } });
+  const [suggBannerOff, setSuggBannerOff] = useState(() => { try { return sessionStorage.getItem("bdlib-sugg-banner") === "off"; } catch { return false; } });
+  function ignoreSugg(key) {
+    setIgnoredSugg(s => { const n = new Set(s); n.add(key); try { localStorage.setItem("bdlib-sugg-ignored", JSON.stringify([...n])); } catch {} return n; });
+  }
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -61,6 +69,7 @@ function LibraryApp({ user }) {
   const ownedBooks = useMemo(() => books.filter(b => S.OWNED.includes(b.statut)), [books]);
   const wishBooks = useMemo(() => books.filter(b => b.statut === "veux"), [books]);
   const libBooks = useMemo(() => books.filter(S.inLibrary), [books]);
+  const suggestions = useMemo(() => buildSuggestions(libBooks, ignoredSugg), [libBooks, ignoredSugg]);
 
   // Déclenchement auto de l'assistant de complétion au 1er lancement du mois (par utilisateur)
   useEffect(() => {
@@ -213,6 +222,17 @@ function LibraryApp({ user }) {
   }
 
   // Remet des albums de l'import BDGest supprimés par erreur
+  // Applique les propositions de rangement (modifications et suppressions de doublons)
+  async function applyChanges(changes) {
+    let ok = 0, failed = 0, last = "";
+    for (const c of changes) {
+      try { if (c.del) await lib.removeBook(c.id); else await lib.editBook(c.id, c.patch); ok++; }
+      catch (e) { failed++; last = e?.message || ""; }
+    }
+    notify("🧭 " + ok + " modification(s) appliquée(s)" + (failed ? " · ⚠️ " + failed + " échec(s)" : ""));
+    return { ok, failed, last };
+  }
+
   async function restoreMissing(items) {
     const toAdd = items.filter(nb => !S.findDuplicate(books, nb));
     const saved = toAdd.length ? await lib.addBooksBulk(toAdd) : [];
@@ -244,6 +264,7 @@ function LibraryApp({ user }) {
               <button className="hdr-menu-item" onClick={() => { exportJson(); close(); }}>⬇️ Exporter (JSON)</button>
               <button className="hdr-menu-item" onClick={() => { migrateFromLocalStorage(); close(); }}>⬆️ Migrer mes données locales</button>
               <div className="hdr-menu-sep" />
+              <button className="hdr-menu-item" onClick={() => { setRangeOpen(true); close(); }}>🧭 Ranger ma collection{suggestions.length ? " (" + suggestions.length + ")" : ""}</button>
               <button className="hdr-menu-item" onClick={() => { setSettingsOpen(true); close(); }}>⚙️ Paramètres</button>
               <div className="hdr-menu-sep" />
               <button className="hdr-menu-item" onClick={() => { logout(); close(); }}>🚪 Se déconnecter</button>
@@ -297,10 +318,19 @@ function LibraryApp({ user }) {
         </div>
       )}
 
+      {suggestions.length > 0 && !suggBannerOff && (viewMode === "biblio" || viewMode === "series") && (
+        <div className="sugg-banner">
+          <span>🧭 <b>{suggestions.length}</b> proposition(s) de rangement (doublons, séries, tomes, genres)</span>
+          <button className="btn btn-primary" onClick={() => setRangeOpen(true)}>Voir</button>
+          <button className="sugg-banner-x" title="Masquer pour cette session" onClick={() => { setSuggBannerOff(true); try { sessionStorage.setItem("bdlib-sugg-banner", "off"); } catch {} }}>✕</button>
+        </div>
+      )}
+
       <main className="library">
         {viewMode === "biblio" && <LibraryGrid books={ownedBooks} query={query} onOpen={setEditingId} sort={sortMode} />}
         {viewMode === "wishlist" && <LibraryGrid books={wishBooks} query={query} onOpen={setEditingId} wishlist sort={sortMode} />}
         {viewMode === "series" && <SeriesView books={libBooks} seriesMeta={seriesMeta} onSetSerieMeta={(key, meta) => lib.setSerieMeta(key, meta)} query={query} blacklist={blacklist} onOpen={setEditingId}
+          onOpenRangement={() => setRangeOpen(true)} suggCount={suggestions.length}
           onEditBook={(id, patch) => lib.editBook(id, patch).then(() => notify("🗂️ Série mise à jour")).catch(e => notify("❌ Non enregistré : " + (e?.message || "erreur")))} />}
         {viewMode === "etagere" && <ShelfView books={libBooks} query={query} onOpen={setEditingId} />}
         {viewMode === "trous" && <GapsView books={libBooks} seriesMeta={seriesMeta} query={query} blacklist={blacklist} onAddWish={addGapWish} onBlacklistSerie={blSerie} onBlacklistAlbum={blAlbum} />}
@@ -337,6 +367,9 @@ function LibraryApp({ user }) {
           onRefreshCovers={lib.refreshCoversBnF}
           onCleanupJunk={lib.cleanupJunk}
           onClose={() => setSettingsOpen(false)} />
+      )}
+      {rangeOpen && (
+        <RangementModal suggestions={suggestions} onApply={applyChanges} onIgnore={ignoreSugg} onClose={() => setRangeOpen(false)} />
       )}
       <Toast message={toast} onDone={() => setToast("")} />
     </div>

@@ -154,9 +154,38 @@ export function sortBooks(list, mode) {
 }
 
 
-// Manga ? format explicite (bd | manga) sinon déduit de l'éditeur / du titre
+// ---------- Genres : franco-belge (bd) | manga | comics ----------
+export const GENRES = {
+  bd: { label: "Franco-belge", icon: "📘", color: "#3ddc97" },
+  manga: { label: "Manga", icon: "🎌", color: "#ff5c7c" },
+  comics: { label: "Comics", icon: "🦸", color: "#4da3ff" },
+};
+export const GENRE_KEYS = Object.keys(GENRES);
 const MANGA_ED = /kana|pika|ki-?oon|kurokawa|tonkam|kaz[ée]|akata|doki|taifu|ototo|meian|naban|mangetsu|no[ée]ve|vega|crunchyroll|black box|soleil manga|gl[ée]nat manga|panini manga|delcourt.?tonkam/i;
-export function isManga(b) {
-  if (b.format) return b.format === "manga";
-  return MANGA_ED.test(b.editeur || "") || /\bmanga\b/i.test((b.titre || "") + " " + (b.serie || ""));
+const COMICS_ED = /urban comics|panini comics|marvel|dc comics|image comics|hi comics|delcourt comics|bliss comics|komics initiative|semic|vertigo|dark horse|\bidw\b|wetta/i;
+const COMICS_TXT = /batman|superman|spider-?man|x-?men|avengers|wonder woman|walking dead|hellboy|spawn|deadpool|wolverine|justice league|watchmen|sandman|daredevil|iron man|\bhulk\b|captain america|fantastic four|green lantern|aquaman|harley quinn|\bvenom\b|invincible\b|tortues ninja|tmnt/i;
+
+// Genre déduit de l'éditeur / du titre (ignore le format saisi). "" si on ne sait pas.
+export function guessGenre(b) {
+  const ed = b.editeur || "", txt = (b.titre || "") + " " + (b.serie || "");
+  if (MANGA_ED.test(ed) || /\bmanga\b/i.test(txt)) return "manga";
+  if (COMICS_ED.test(ed) || COMICS_TXT.test(txt)) return "comics";
+  return "";
 }
+// Genre de chaque album (Map id -> genre) : format saisi > majorité de la série > déduction > franco-belge
+export function buildGenreMap(books) {
+  const bySerie = new Map();
+  (books || []).forEach(b => { const k = normTitle(b.serie); if (!k) return; if (!bySerie.has(k)) bySerie.set(k, []); bySerie.get(k).push(b); });
+  const serieGenre = new Map();
+  bySerie.forEach((list, k) => {
+    const votes = {};
+    list.forEach(b => { const g = GENRE_KEYS.includes(b.format) ? b.format : guessGenre(b); if (g) votes[g] = (votes[g] || 0) + (GENRE_KEYS.includes(b.format) ? 3 : 1); });
+    const best = Object.entries(votes).sort((a, b) => b[1] - a[1])[0];
+    if (best) serieGenre.set(k, best[0]);
+  });
+  const out = new Map();
+  (books || []).forEach(b => out.set(b.id, GENRE_KEYS.includes(b.format) ? b.format : (serieGenre.get(normTitle(b.serie)) || guessGenre(b) || "bd")));
+  return out;
+}
+export function genreOf(b) { return GENRE_KEYS.includes(b.format) ? b.format : (guessGenre(b) || "bd"); }
+export function isManga(b) { return genreOf(b) === "manga"; }

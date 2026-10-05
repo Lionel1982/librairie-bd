@@ -86,7 +86,7 @@ export default function BookModal({ id, books, refCatalog, onSave, onDelete, onC
             {renderField({ label: "Pages", k: "pages", type: "number" })}
             <div className="form-field"><label>Format</label>
               <select value={f.format || ""} onChange={e => set("format", e.target.value)}>
-                <option value="">Auto</option><option value="bd">BD</option><option value="manga">Manga</option>
+                <option value="">Auto (déduit)</option><option value="bd">Franco-belge</option><option value="manga">Manga</option><option value="comics">Comics</option>
               </select>
             </div>
             <div className="form-field"><label>Statut</label>

@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { isManga, normTitle } from "../lib/store.js";
+import { buildGenreMap, normTitle } from "../lib/store.js";
 
 const DEFAULT_PAGES = 50;      // sans info : une tranche « 50 pages »
 const ROW_MAX_WIDTH = 420;     // largeur cumulée max d'une rangée (px)
@@ -15,9 +15,10 @@ export default function ShelfView({ books, query, onOpen }) {
   // une hauteur UNIQUE par série : manga plus petit, grand format plus haut, légère variation entre séries
   const series = useMemo(() => {
     const g = new Map();
+    const gmap = buildGenreMap(books);
     books.forEach(b => {
       const k = groupKey(b); const e = g.get(k) || { manga: false, big: false };
-      if (isManga(b)) e.manga = true;
+      if (gmap.get(b.id) === "manga") e.manga = true;
       if (BIG.test((b.titre || "") + " " + (b.editeur || ""))) e.big = true;
       g.set(k, e);
     });

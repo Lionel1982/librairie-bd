@@ -198,7 +198,7 @@ export async function lookupByISBNRemote(isbnRaw) {
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 9000);
-    const r = await fetch("/api/isbn?v=3&isbn=" + encodeURIComponent(isbn), { signal: ctrl.signal });
+    const r = await fetch("/api/isbn?v=4&isbn=" + encodeURIComponent(isbn), { signal: ctrl.signal });
     clearTimeout(timer);
     if (!r.ok) return null;
     const j = await r.json();

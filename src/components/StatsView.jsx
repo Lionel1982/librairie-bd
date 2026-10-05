@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { OWNED, normTitle } from "../lib/store.js";
+import { OWNED, normTitle, buildGenreMap, GENRES, GENRE_KEYS } from "../lib/store.js";
 
 function Donut({ segments, size = 180 }) {
   const r = size / 2 - 16, cx = size / 2, cy = size / 2, C = 2 * Math.PI * r;
@@ -33,6 +33,28 @@ export default function StatsView({ books, seriesMeta }) {
     return { total: books.length, jai, veux, lu, nbSeries: Object.keys(series).length, topEds, maxEd: topEds[0]?.[1] || 1, valeur, completes, entamees };
   }, [books, seriesMeta]);
 
+  // stats par genre (franco-belge / manga / comics), sur les albums possédés
+  const genre = useMemo(() => {
+    const gmap = buildGenreMap(books);
+    const g = {}; GENRE_KEYS.forEach(k => { g[k] = { owned: 0, wish: 0, lu: 0, series: {}, eds: {} }; });
+    let deduced = 0;
+    books.forEach(b => {
+      const e = g[gmap.get(b.id) || "bd"]; const owned = OWNED.includes(b.statut);
+      if (b.statut === "veux") e.wish++;
+      if (!owned) return;
+      e.owned++; if (b.statut === "lu") e.lu++;
+      if (!GENRE_KEYS.includes(b.format)) deduced++;
+      const s = (b.serie || "").trim(); if (s) e.series[s] = (e.series[s] || 0) + 1;
+      const ed = (b.editeur || "").trim(); if (ed) e.eds[ed] = (e.eds[ed] || 0) + 1;
+    });
+    Object.values(g).forEach(e => {
+      e.nbSeries = Object.keys(e.series).length;
+      e.top = Object.entries(e.series).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      e.topEd = Object.entries(e.eds).sort((a, b) => b[1] - a[1])[0];
+    });
+    return { g, deduced };
+  }, [books]);
+
   if (!books.length) return <div className="pending-hint">Aucune BD en bibliothèque.</div>;
   const card = (icon, val, label) => <div className="stat-card"><div className="stat-icon">{icon}</div><div className="stat-num">{val}</div><div className="stat-label">{label}</div></div>;
   return (
@@ -41,6 +63,26 @@ export default function StatsView({ books, seriesMeta }) {
         {card("📚", stats.total, "albums")}{card("🗂️", stats.nbSeries, "séries")}{card("💚", stats.jai, "possédés")}
         {card("💜", stats.veux, "souhaités")}{card("📖", stats.lu, "lus")}{card("✅", stats.completes, "séries complètes")}
         {card("🧩", stats.entamees, "à compléter")}{stats.valeur > 0 && card("💶", Math.round(stats.valeur) + "€", "valeur d'achat")}
+      </div>
+      <div className="stats-block"><h3>🌍 Par genre</h3>
+        <div className="genre-wrap">
+          <Donut segments={GENRE_KEYS.map(k => ({ label: GENRES[k].icon + " " + GENRES[k].label, value: genre.g[k].owned, color: GENRES[k].color }))} />
+          <div className="genre-cards">
+            {GENRE_KEYS.map(k => { const e = genre.g[k], G = GENRES[k]; return (
+              <div className="genre-card" key={k} style={{ borderColor: G.color }}>
+                <div className="genre-head"><span className="genre-ico">{G.icon}</span><b>{G.label}</b></div>
+                <div className="genre-nums">
+                  <span><b>{e.owned}</b> albums</span><span><b>{e.nbSeries}</b> séries</span>
+                  <span><b>{e.owned ? Math.round(e.lu / e.owned * 100) : 0}%</b> lus</span>
+                  {e.wish > 0 && <span><b>{e.wish}</b> souhaités</span>}
+                </div>
+                {e.top.map(([s, n]) => <div className="genre-top-row" key={s}><span>{s}</span><b>{n}</b></div>)}
+                {e.topEd && <div className="genre-ed">🏢 {e.topEd[0]} ({e.topEd[1]})</div>}
+              </div>
+            ); })}
+          </div>
+        </div>
+        {genre.deduced > 0 && <p className="genre-note">ℹ️ {genre.deduced} album(s) classé(s) par déduction (éditeur, titre, autres tomes de la série) ; sans indice, un album compte comme franco-belge. Confirme-les avec 🧭 Ranger ou le champ Format de la fiche.</p>}
       </div>
       <div className="stats-charts">
         <div className="stats-block chart-block"><h3>📗 Répartition</h3><Donut segments={[{ label: "Possédés", value: stats.jai, color: "#3ddc97" }, { label: "Souhaités", value: stats.veux, color: "#7c5cff" }]} /></div>
