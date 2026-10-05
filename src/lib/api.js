@@ -223,3 +223,38 @@ export async function fetchCover(isbnRaw) {
     return (j && j.cover) ? j.cover : "";
   } catch { return ""; }
 }
+
+
+export function downscaleToDataURL(url, maxPx = 400, quality = 0.82) {
+  return new Promise((resolve) => {
+    if (!url) return resolve("");
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    let done = false; const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    const timer = setTimeout(() => finish(""), 12000);
+    img.onload = () => {
+      clearTimeout(timer);
+      try {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        if (w <= 2 || h <= 2) return finish("");
+        const scale = Math.min(1, maxPx / Math.max(w, h));
+        const cw = Math.round(w * scale), ch = Math.round(h * scale);
+        const cv = document.createElement("canvas"); cv.width = cw; cv.height = ch;
+        cv.getContext("2d").drawImage(img, 0, 0, cw, ch);
+        finish(cv.toDataURL("image/jpeg", quality));
+      } catch { finish(""); }
+    };
+    img.onerror = () => { clearTimeout(timer); finish(""); };
+    img.src = url;
+  });
+}
+
+export async function toStorableCover(url, isbn) {
+  if (!url) return "";
+  if (url.startsWith("data:")) return url;
+  let d = await downscaleToDataURL(url);
+  if (d) return d;
+  const prox = "/api/cover?img=1&src=" + encodeURIComponent(url) + (isbn ? "&isbn=" + encodeURIComponent(cleanIsbn(isbn)) : "");
+  d = await downscaleToDataURL(prox);
+  return d || url;
+}

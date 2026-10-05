@@ -102,18 +102,31 @@ export function useLibrary(userId) {
   }, []);
 
   // enrichit les couvertures manquantes (ciblé) — met à jour localement puis persiste
+  const persistCover = useCallback(async (id, rawUrl) => {
+    if (!id || !rawUrl) return;
+    const cur = booksRef.current.find(b => b.id === id);
+    if (cur && cur._coverOk && String(cur.cover || "").startsWith("data:")) return;
+    let stored = "";
+    try { stored = await API.toStorableCover(rawUrl, cur && cur.isbn); } catch {}
+    if (!stored) return;
+    setBooks(bs => bs.map(x => x.id === id ? { ...x, cover: stored, _coverOk: true } : x));
+    try { await DB.updateBook(id, { cover: stored, _coverOk: true }); } catch (e) { console.warn("persistCover", e); }
+  }, []);
+
   const enrichCovers = useCallback(async (ids) => {
     const idSet = ids && ids.length ? new Set(ids) : null;
     let targets = [];
     targets = booksRef.current.filter(b => (!idSet || idSet.has(b.id)) && (b.titre || b.isbn) && (!b.cover || !b._coverOk));
     for (const b of targets) {
       let patch = null;
-      if (b.cover && await API.validateImage(b.cover)) patch = { _coverOk: true };
-      else if (b.isbn) {
-        let c = "";
-        try { c = await API.fetchCover(b.isbn); } catch {}                    // BnF -> Google -> OpenLibrary (serveur)
+      if (b.cover && String(b.cover).startsWith("data:")) {
+        patch = { _coverOk: true };
+      } else if (b.cover && await API.validateImage(b.cover)) {
+        const d = await API.toStorableCover(b.cover, b.isbn); patch = d ? { cover: d, _coverOk: true } : { _coverOk: true };
+      } else if (b.isbn) {
+        let c = ""; try { c = await API.fetchCover(b.isbn); } catch {}
         if (!c) { try { c = await API.resolveCover(S.cleanIsbn(b.isbn), ""); } catch {} }
-        if (c) patch = { cover: c, _coverOk: true };
+        if (c) { const d = await API.toStorableCover(c, b.isbn); patch = { cover: d || c, _coverOk: true }; }
       }
       if (patch) {
         setBooks(bs => bs.map(x => x.id === b.id ? { ...x, ...patch } : x));
@@ -160,9 +173,10 @@ export function useLibrary(userId) {
       if (onProgress) onProgress(i + 1, targets.length, b.titre || b.isbn);
       try {
         const cover = await API.fetchCover(b.isbn);
-        if (cover && cover !== b.cover) {
-          setBooks(bs => bs.map(x => x.id === b.id ? { ...x, cover, _coverOk: true } : x));
-          await DB.updateBook(b.id, { cover, _coverOk: true });
+        if (cover) {
+          const stored = await API.toStorableCover(cover, b.isbn) || cover;
+          setBooks(bs => bs.map(x => x.id === b.id ? { ...x, cover: stored, _coverOk: true } : x));
+          await DB.updateBook(b.id, { cover: stored, _coverOk: true });
           updated++;
         }
       } catch {}
@@ -198,6 +212,6 @@ export function useLibrary(userId) {
     addBook, addBooksBulk, editBook, removeBook,
     replaceCatalog, setSerieMeta,
     addBlSerie, addBlAlbum, removeBlSerie, removeBlAlbum,
-    enrichCovers, refreshCoversBnF, cleanupJunk, fetchPagesFormat,
+    enrichCovers, refreshCoversBnF, cleanupJunk, fetchPagesFormat, persistCover,
   };
 }

@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import Cover from "./Cover.jsx";
 import { STATUS_LABELS, amazonUrl, sortBooks } from "../lib/store.js";
 
-export default function LibraryGrid({ books, query, onOpen, wishlist, sort = "recent", emptyText }) {
+export default function LibraryGrid({ books, query, onOpen, wishlist, sort = "recent", emptyText, onCoverResolved }) {
   const list = useMemo(() => {
     const q = (query || "").trim().toLowerCase();
     let out = books.filter(b => !q || [b.titre, b.serie, b.auteur, b.editeur].join(" ").toLowerCase().includes(q));
@@ -17,7 +17,7 @@ export default function LibraryGrid({ books, query, onOpen, wishlist, sort = "re
     const badge = (b.statut === "jai" || b.statut === "lu") ? null : <span className={"status-badge status-" + b.statut}>{STATUS_LABELS[b.statut]}</span>;
     return (
       <div className="card" key={b.id} style={{ animationDelay: Math.min(i * 30, 400) + "ms" }} onClick={() => onOpen(b.id)}>
-        <div className="card-cover"><Cover src={b.cover} title={b.titre} isbn={b.isbn} />{badge}</div>
+        <div className="card-cover"><Cover src={b.cover} title={b.titre} isbn={b.isbn} onResolved={onCoverResolved ? (u => onCoverResolved(b, u)) : undefined} />{badge}</div>
         <div className="card-body">
           {b.serie && <div className="card-serie">{b.serie}{b.tome ? " · T." + b.tome : ""}</div>}
           <div className="card-title">{b.titre}</div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useBackClose } from "../lib/backButton.js";
 import { cleanIsbn, isbnVariants } from "../lib/store.js";
-import { validateImage, fetchCover } from "../lib/api.js";
+import { validateImage, fetchCover, toStorableCover } from "../lib/api.js";
 
 // Sélecteur de couvertures multi-sources. Propose plusieurs images candidates
 // (BnF via /api/cover, Open Library L/M, Google Books, Wikimedia Commons par titre).
@@ -11,6 +11,7 @@ export default function CoverPicker({ isbn, titre, serie, onPick, onClose }) {
   const [cands, setCands] = useState([]);   // {url, ok}
   const [status, setStatus] = useState("Recherche de couvertures…");
   const [manual, setManual] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -44,20 +45,18 @@ export default function CoverPicker({ isbn, titre, serie, onPick, onClose }) {
     return () => { alive = false; };
   }, [isbn, titre, serie]);
 
-  function useManual() {
-    const u = manual.trim();
-    if (u) onPick(u);
-  }
+  async function choose(url) { setSaving(true); let d = ""; try { d = await toStorableCover(url, isbn); } catch {} onPick(d || url); }
+  async function useManual() { const u = manual.trim(); if (u) await choose(u); }
 
   return (
     <div className="modal-overlay" onClick={e => e.target.classList.contains("modal-overlay") && onClose()} style={{ zIndex: 3000 }}>
       <div className="modal" style={{ maxWidth: 560, maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
         <div className="modal-header"><h2>🖼️ Choisir une couverture</h2><button className="modal-close" onClick={onClose}>✕</button></div>
         <div className="modal-body" style={{ overflowY: "auto" }}>
-          <div className="cover-picker-status">{status}</div>
+          <div className="cover-picker-status">{saving ? "💾 Enregistrement de la couverture…" : status}</div>
           <div className="cover-picker-grid">
             {cands.map((c, i) => (
-              <button className="cover-cand" key={i} onClick={() => onPick(c.url)} title="Choisir cette couverture">
+              <button className="cover-cand" key={i} onClick={() => choose(c.url)} title="Choisir cette couverture">
                 <img src={c.url} alt="" loading="lazy" onError={e => { e.target.closest(".cover-cand").style.display = "none"; }} />
               </button>
             ))}

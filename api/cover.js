@@ -70,8 +70,22 @@ async function googleCover(isbn) {
 
 export default async function handler(req, res) {
   const q = req.query || {};
-  const wantImg = q.img === "1";              // ?img=1 -> redirige vers l'image (utilisable dans <img src>)
+  const wantImg = q.img === "1";
+  const src = typeof q.src === "string" ? q.src : "";
   const isbn = clean(q.isbn || "");
+  if (src && /^https?:\/\//i.test(src)) {
+    try {
+      const r = await fetch(src, { headers: { "User-Agent": "Mozilla/5.0 (compatible; bd-library/1.0)" } });
+      if (r.ok && /image\//i.test(r.headers.get("content-type") || "")) {
+        const buf = Buffer.from(await r.arrayBuffer());
+        res.setHeader("Content-Type", r.headers.get("content-type"));
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Cache-Control", "public, s-maxage=604800");
+        return res.status(200).send(buf);
+      }
+    } catch {}
+    if (!isbn) return res.status(404).end();
+  }
   if (!isbn || (isbn.length !== 13 && isbn.length !== 10)) {
     return res.status(400).json({ error: "ISBN invalide", isbn });
   }
@@ -88,8 +102,17 @@ export default async function handler(req, res) {
 
   for (const url of candidates) {
     if (await imageOk(url)) {
+      if (wantImg) {
+        try {
+          const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (compatible; bd-library/1.0)" } });
+          const buf = Buffer.from(await r.arrayBuffer());
+          res.setHeader("Content-Type", r.headers.get("content-type") || "image/jpeg");
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Cache-Control", "public, s-maxage=604800, stale-while-revalidate=86400");
+          return res.status(200).send(buf);
+        } catch { res.setHeader("Location", url); return res.status(302).end(); }
+      }
       res.setHeader("Cache-Control", "public, s-maxage=604800, stale-while-revalidate=86400");
-      if (wantImg) { res.setHeader("Location", url); return res.status(302).end(); }
       return res.status(200).json({ found: true, isbn: isbn13, cover: url });
     }
   }

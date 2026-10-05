@@ -112,7 +112,7 @@ export default function BookModal({ id, books, refCatalog, onSave, onDelete, onC
       </div>
       {pickerOpen && (
         <CoverPicker isbn={f.isbn} titre={f.titre} serie={f.serie}
-          onPick={(url) => { set("cover", url); setPickerOpen(false); }}
+          onPick={(url) => { set("cover", url); set("_coverOk", true); setPickerOpen(false); }}
           onClose={() => setPickerOpen(false)} />
       )}
     </div>

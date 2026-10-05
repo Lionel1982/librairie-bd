@@ -22,7 +22,7 @@ import RangementModal from "./components/RangementModal.jsx";
 import { buildSuggestions } from "./lib/suggest.js";
 import { getTheme, applyTheme } from "./lib/theme.js";
 
-const APP_VERSION = "3.19.0-supabase";
+const APP_VERSION = "3.20.0-supabase";
 
 // filtres de la Bibliothèque (statut, genre, sans couverture, éditeur)
 const DEFAULT_FILTERS = { statut: "owned", noCover: false, genre: "", editeur: "" };
@@ -265,6 +265,14 @@ function LibraryApp({ user }) {
     return { ok, failed, last };
   }
 
+  const coverSeen = useRef(new Set());
+  function onCoverResolved(b, url) {
+    if (!b || !b.id || !url || url.startsWith("data:")) return;
+    if (b._coverOk && String(b.cover || "").startsWith("data:")) return;
+    if (coverSeen.current.has(b.id)) return; coverSeen.current.add(b.id);
+    lib.persistCover(b.id, url);
+  }
+
   async function restoreMissing(items) {
     const toAdd = items.filter(nb => !S.findDuplicate(books, nb));
     const saved = toAdd.length ? await lib.addBooksBulk(toAdd) : [];
@@ -387,8 +395,8 @@ function LibraryApp({ user }) {
       )}
 
       <main className="library">
-        {viewMode === "biblio" && <LibraryGrid books={biblioBooks} query={query} onOpen={setEditingId} sort={sortMode} emptyText={activeChips.length ? "Aucun album ne correspond à ces filtres." : ""} />}
-        {viewMode === "wishlist" && <LibraryGrid books={wishFiltered} query={query} onOpen={setEditingId} wishlist sort={sortMode} emptyText={activeChips.length ? "Aucun souhait ne correspond à ces filtres." : ""} />}
+        {viewMode === "biblio" && <LibraryGrid books={biblioBooks} query={query} onOpen={setEditingId} sort={sortMode} emptyText={activeChips.length ? "Aucun album ne correspond à ces filtres." : ""} onCoverResolved={onCoverResolved} />}
+        {viewMode === "wishlist" && <LibraryGrid books={wishFiltered} query={query} onOpen={setEditingId} wishlist sort={sortMode} emptyText={activeChips.length ? "Aucun souhait ne correspond à ces filtres." : ""} onCoverResolved={onCoverResolved} />}
         {viewMode === "series" && <SeriesView books={libBooks} seriesMeta={seriesMeta} onSetSerieMeta={(key, meta) => lib.setSerieMeta(key, meta)} query={query} blacklist={blacklist} onOpen={setEditingId}
           onOpenRangement={() => setRangeOpen(true)} suggCount={suggestions.length}
           onEditBook={(id, patch) => lib.editBook(id, patch).then(() => notify("🗂️ Série mise à jour")).catch(e => notify("❌ Non enregistré : " + (e?.message || "erreur")))} />}

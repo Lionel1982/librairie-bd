@@ -724,7 +724,7 @@ select:focus { outline: none; border-color: var(--accent); }
 /* ===== Liste noire : boutons de blocage + paramètres (lot 3b) ===== */
 .plan-item-block { display: flex; flex-direction: column; gap: 4px; margin-left: 8px; }
 .block-btn { background: transparent; border: 1px solid var(--border); color: var(--text-dim); font-size: 11px; padding: 3px 7px; border-radius: 7px; cursor: pointer; white-space: nowrap; transition: all .15s; }
-.block-btn:hover { border-color: #ff5c7c; color: #ff5c7c; background: rgba(255,92,124,.08); }
+.block-btn:hover { border-color: var(--accent-2); color: var(--accent-2); background: rgba(255,92,124,.08); }
 .block-btn-serie:hover { border-color: #ffa726; color: #ffa726; background: rgba(255,167,38,.08); }
 
 .gap-tome-wrap { display: inline-flex; align-items: center; gap: 2px; margin: 0 6px 6px 0; }
@@ -747,7 +747,7 @@ select:focus { outline: none; border-color: var(--accent); }
 
 /* ===== Boutons-icônes de blocage (lot 3c) ===== */
 .block-icon { display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 1px solid var(--border); color: var(--text-dim); padding: 5px; border-radius: 8px; cursor: pointer; transition: all .15s; line-height: 0; }
-.block-icon:hover { border-color: #ff5c7c; color: #ff5c7c; background: rgba(255,92,124,.08); }
+.block-icon:hover { border-color: var(--accent-2); color: var(--accent-2); background: rgba(255,92,124,.08); }
 .block-icon-serie:hover { border-color: #ffa726; color: #ffa726; background: rgba(255,167,38,.08); }
 .block-btn-serie { display: inline-flex; align-items: center; gap: 5px; }
 
@@ -845,7 +845,7 @@ select:focus { outline: none; border-color: var(--accent); }
 .action-tile .action-icon { font-size: 30px; line-height: 1; }
 .action-tile .action-label { font-size: 14px; font-weight: 600; text-align: center; line-height: 1.2; }
 .action-tile.action-primary { background: linear-gradient(135deg, var(--accent), var(--accent-deep)); border-color: transparent; }
-.action-tile.action-pending { border-color: #ff5c7c; box-shadow: 0 0 0 2px rgba(255,92,124,.25); }
+.action-tile.action-pending { border-color: var(--accent-2); box-shadow: 0 0 0 2px rgba(255,92,124,.25); }
 
 .btn-burger { font-size: 22px; line-height: 1; padding: 8px 14px; }
 .hdr-menu-panel.align-left { left: 0; }
@@ -866,7 +866,7 @@ select:focus { outline: none; border-color: var(--accent); }
 .scan-queue-head { font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
 .scan-queue-list { display: flex; flex-wrap: wrap; gap: 6px; max-height: 120px; overflow-y: auto; }
 .scan-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface-2, var(--bg-elev)); border: 1px solid var(--border); border-radius: 999px; padding: 5px 10px; font-size: 13px; color: var(--text); }
-.scan-chip button { background: none; border: none; color: #ff5c7c; cursor: pointer; font-size: 13px; padding: 0; }
+.scan-chip button { background: none; border: none; color: var(--accent-2); cursor: pointer; font-size: 13px; padding: 0; }
 .scanner-working { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; flex: 1; color: var(--text); }
 .scanner-spinner { font-size: 46px; animation: spin 1.4s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -930,7 +930,7 @@ select:focus { outline: none; border-color: var(--accent); }
 .topbar-actions .action-icon { font-size: 26px; }
 .topbar-actions .action-label { font-size: 13px; font-weight: 600; }
 .topbar-actions .action-primary { background: linear-gradient(135deg, var(--accent), var(--accent-deep)); border-color: transparent; }
-.topbar-actions .action-pending { border-color: #ff5c7c; box-shadow: 0 0 0 2px rgba(255,92,124,.25); }
+.topbar-actions .action-pending { border-color: var(--accent-2); box-shadow: 0 0 0 2px rgba(255,92,124,.25); }
 
 /* --- Au scroll : tout compact sur une ligne --- */
 .app-scrolled .topbar { box-shadow: 0 4px 16px rgba(0,0,0,.5); padding: 6px 0; }
@@ -981,7 +981,7 @@ select:focus { outline: none; border-color: var(--accent); }
   width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 12px;
   display: flex; align-items: center; justify-content: center; line-height: 1;
 }
-.find-clear:hover { background: #ff5c7c; color: #fff; }
+.find-clear:hover { background: var(--accent-2); color: #fff; }
 
 /* Budget du mois / Prix moyen : empêcher le débordement (box-sizing + wrap mobile) */
 .plan-controls { flex-wrap: wrap; }
@@ -1015,7 +1015,7 @@ select:focus { outline: none; border-color: var(--accent); }
   width: 26px; height: 26px; border-radius: 50%; cursor: pointer; font-size: 13px;
   display: flex; align-items: center; justify-content: center;
 }
-.floating-filter-close:hover { background: #ff5c7c; color: #fff; }
+.floating-filter-close:hover { background: var(--accent-2); color: #fff; }
 
 
 /* ===== Version dans le burger + fiche BD (v3.9.0) ===== */
