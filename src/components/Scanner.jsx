@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
+import { useBackClose } from "../lib/backButton.js";
 import { createScanEngine, isValidBookEAN } from "../lib/scanner.js";
 import { lookupByISBN, lookupByISBNRemote } from "../lib/api.js";
 import { catalogLookup, catalogUpsert } from "../lib/db.js";
@@ -11,6 +12,7 @@ const withTimeout = (p, ms) => Promise.race([Promise.resolve(p).catch(() => null
 // On accumule les ISBN scannés (fluide, pas de lookup pendant le scan),
 // puis on complète les infos en lot à la validation.
 export default function Scanner({ onAddMany, refCatalog = [], onClose }) {
+  useBackClose(true, onClose);   // bouton « précédent » = fermer
   const videoRef = useRef(null);
   const engineRef = useRef(null);
   const [status, setStatus] = useState("Initialisation de la caméra…");

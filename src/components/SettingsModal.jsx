@@ -1,8 +1,12 @@
 import React, { useState, useMemo } from "react";
 import { findDuplicate, normTitle } from "../lib/store.js";
+import { THEMES } from "../lib/theme.js";
+import { useBackClose } from "../lib/backButton.js";
 
 // Paramètres avec navigation interne : écran d'accueil (rubriques) -> sous-écrans.
-export default function SettingsModal({ blacklist, books, refCatalog, onRestore, onFetchPages, onUnblacklistSerie, onUnblacklistAlbum, onRefreshCovers, onCleanupJunk, onClose }) {
+export default function SettingsModal({ mode = "settings", theme, onTheme, suggCount = 0, noCoverCount = 0, onOpenSuggestions, onShowNoCover,
+  blacklist, books, refCatalog, onRestore, onFetchPages, onUnblacklistSerie, onUnblacklistAlbum, onRefreshCovers, onCleanupJunk, onClose }) {
+  useBackClose(true, onClose);   // bouton « précédent » = fermer
   const [screen, setScreen] = useState("home"); // home | blacklist | covers | cleanup
   const [coverBusy, setCoverBusy] = useState(false);
   const [coverMsg, setCoverMsg] = useState("");
@@ -90,12 +94,22 @@ export default function SettingsModal({ blacklist, books, refCatalog, onRestore,
     } catch (e) { setJunkMsg("⚠️ Erreur : " + (e?.message || "nettoyage")); }
   }
 
-  const title = screen === "home" ? "⚙️ Paramètres"
+  const title = screen === "home" ? (mode === "ranger" ? "🧭 Ranger ma collection" : "⚙️ Paramètres")
+    : screen === "theme" ? "🎨 Couleurs"
     : screen === "blacklist" ? "⛔ Liste noire"
     : screen === "covers" ? "🖼️ Couvertures"
     : screen === "restore" ? "♻️ Albums manquants"
     : screen === "pages" ? "📏 Étagère : pages et format"
     : "🧹 Nettoyage";
+
+  const row = (ico, name, sub, onClick, badge) => (
+    <button className="settings-row" key={name} onClick={onClick}>
+      <span className="settings-row-ico">{ico}</span>
+      <span className="settings-row-txt"><b>{name}</b><small>{sub}</small></span>
+      {badge ? <span className="settings-row-badge">{badge}</span> : null}
+      <span className="settings-row-arrow">›</span>
+    </button>
+  );
 
   return (
     <div className="modal-overlay" onClick={e => e.target.classList.contains("modal-overlay") && onClose()}>
@@ -109,40 +123,35 @@ export default function SettingsModal({ blacklist, books, refCatalog, onRestore,
         </div>
 
         <div className="modal-body" style={{ overflowY: "auto" }}>
-          {screen === "home" && (
+          {screen === "home" && mode === "ranger" && (
             <div className="settings-menu">
-              <button className="settings-row" onClick={() => setScreen("blacklist")}>
-                <span className="settings-row-ico">⛔</span>
-                <span className="settings-row-txt"><b>Liste noire</b><small>Séries et albums à ne plus proposer</small></span>
-                <span className="settings-row-badge">{series.length + albums.length}</span>
-                <span className="settings-row-arrow">›</span>
-              </button>
-              <button className="settings-row" onClick={() => setScreen("covers")}>
-                <span className="settings-row-ico">🖼️</span>
-                <span className="settings-row-txt"><b>Couvertures</b><small>Récupérer les couvertures manquantes</small></span>
-                <span className="settings-row-arrow">›</span>
-              </button>
-              <button className="settings-row" onClick={() => setScreen("cleanup")}>
-                <span className="settings-row-ico">🧹</span>
-                <span className="settings-row-txt"><b>Nettoyage</b><small>Supprimer les entrées parasites</small></span>
-                <span className="settings-row-arrow">›</span>
-              </button>
-              <button className="settings-row" onClick={() => setScreen("restore")}>
-                <span className="settings-row-ico">♻️</span>
-                <span className="settings-row-txt"><b>Albums manquants</b><small>Retrouver les albums supprimés par erreur (import BDGest)</small></span>
-                <span className="settings-row-arrow">›</span>
-              </button>
-              <button className="settings-row" onClick={() => setScreen("pages")}>
-                <span className="settings-row-ico">📏</span>
-                <span className="settings-row-txt"><b>Étagère</b><small>Récupérer le nombre de pages et repérer les mangas</small></span>
-                <span className="settings-row-arrow">›</span>
-              </button>
-              <button className="settings-row" onClick={hardRefresh}>
-                <span className="settings-row-ico">🔄</span>
-                <span className="settings-row-txt"><b>Rafraîchir</b><small>Vider le cache et recharger (tél + PC)</small></span>
-                <span className="settings-row-arrow">›</span>
-              </button>
+              {row("🧭", "Propositions de rangement", "Doublons, séries à fusionner, tomes, genres", onOpenSuggestions, suggCount)}
+              {row("🖼️", "Couvertures", "Voir les albums sans couverture, récupérer les manquantes", () => setScreen("covers"), noCoverCount)}
+              {row("🧹", "Nettoyage", "Supprimer les entrées parasites", () => setScreen("cleanup"))}
+              {row("♻️", "Albums manquants", "Retrouver les albums supprimés par erreur (import BDGest)", () => setScreen("restore"))}
+              {row("📏", "Étagère", "Nombre de pages et repérage des mangas", () => setScreen("pages"))}
             </div>
+          )}
+          {screen === "home" && mode !== "ranger" && (
+            <div className="settings-menu">
+              {row("🎨", "Couleurs", "Changer l’ambiance de l’app", () => setScreen("theme"))}
+              {row("⛔", "Liste noire", "Séries et albums à ne plus proposer", () => setScreen("blacklist"), series.length + albums.length)}
+              {row("🔄", "Rafraîchir", "Vider le cache et recharger (tél + PC)", hardRefresh)}
+            </div>
+          )}
+
+          {screen === "theme" && (
+            <section className="settings-section">
+              <p className="settings-empty">Choisis l’ambiance de l’app (enregistrée sur cet appareil).</p>
+              <div className="theme-grid">
+                {THEMES.map(th => (
+                  <button key={th.key} className={"theme-card" + (theme === th.key ? " active" : "")} onClick={() => onTheme && onTheme(th.key)}>
+                    <span className="theme-sw">{th.swatch.map((c, i) => <i key={i} style={{ background: c }} />)}</span>
+                    <b>{th.label}</b><small>{th.desc}</small>
+                  </button>
+                ))}
+              </div>
+            </section>
           )}
 
           {screen === "covers" && (
@@ -150,6 +159,9 @@ export default function SettingsModal({ blacklist, books, refCatalog, onRestore,
               <p className="settings-empty">Récupère une couverture (BnF, Google Books, Open Library) pour tous les albums ayant un ISBN. Les couvertures existantes valides ne sont écrasées que si une meilleure est trouvée.</p>
               <button className="btn btn-primary" disabled={coverBusy} onClick={runRefreshCovers}>{coverBusy ? "⏳ En cours…" : "🖼️ Récupérer les couvertures manquantes"}</button>
               {coverMsg && <div className="settings-cover-msg">{coverMsg}</div>}
+              <div className="settings-sep" />
+              <p className="settings-empty"><b>{noCoverCount}</b> album(s) sans couverture enregistrée.</p>
+              {noCoverCount > 0 && onShowNoCover && <button className="btn btn-ghost" onClick={onShowNoCover}>👁️ Voir les albums sans couverture</button>}
             </section>
           )}
 

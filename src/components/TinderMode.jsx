@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from "react";
+import { useBackClose } from "../lib/backButton.js";
 import { uid, extractTome } from "../lib/store.js";
 import { searchCandidates } from "../lib/api.js";
 import SmartThumb from "./SmartThumb.jsx";
@@ -6,6 +7,7 @@ import CoverPicker from "./CoverPicker.jsx";
 
 // Mode Tinder plein écran : swipe pour trancher les "à confirmer"
 export default function TinderMode({ books, refCatalog, onCommit, onAddMany, onSetCover, onClose }) {
+  useBackClose(true, onClose);   // bouton « précédent » = fermer
   const queue = useMemo(() => books.filter(b => b.statut === "a-confirmer").map(b => b.id), [books]);
   const [drag, setDrag] = useState({ dx: 0, dy: 0, active: false });
   const [suggestFor, setSuggestFor] = useState(null); // book courant si panneau ouvert
@@ -130,6 +132,7 @@ function CoverOrFallback({ book }) {
 
 // Panneau Identifier (multi-sélection) — chaque tome coché = une entrée distincte
 function SuggestPanel({ book, books, refCatalog, onApply, onClose }) {
+  useBackClose(true, onClose);   // bouton « précédent » = fermer
   const [q, setQ] = useState([book.serie || book.titre, book.auteur].filter(Boolean).join(" ").trim());
   const [results, setResults] = useState([]);
   const [checked, setChecked] = useState(new Set());

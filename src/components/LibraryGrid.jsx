@@ -2,14 +2,14 @@ import React, { useMemo } from "react";
 import Cover from "./Cover.jsx";
 import { STATUS_LABELS, amazonUrl, sortBooks } from "../lib/store.js";
 
-export default function LibraryGrid({ books, query, onOpen, wishlist, sort = "recent" }) {
+export default function LibraryGrid({ books, query, onOpen, wishlist, sort = "recent", emptyText }) {
   const list = useMemo(() => {
     const q = (query || "").trim().toLowerCase();
     let out = books.filter(b => !q || [b.titre, b.serie, b.auteur, b.editeur].join(" ").toLowerCase().includes(q));
     return sortBooks(out, sort);
   }, [books, query, sort]);
 
-  if (!books.length) return <div className="pending-hint">{wishlist ? "💜 Ta liste de souhaits est vide." : "Ta bibliothèque est vide."}</div>;
+  if (!books.length) return <div className="pending-hint">{emptyText || (wishlist ? "💜 Ta liste de souhaits est vide." : "Ta bibliothèque est vide.")}</div>;
   if (!list.length) return <p style={{ gridColumn: "1/-1", textAlign: "center", color: "var(--text-dim)", padding: 40 }}>Aucun résultat.</p>;
 
   return list.map((b, i) => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useBackClose } from "../lib/backButton.js";
 import { cleanIsbn, isbnVariants } from "../lib/store.js";
 import { validateImage, fetchCover } from "../lib/api.js";
 
@@ -6,6 +7,7 @@ import { validateImage, fetchCover } from "../lib/api.js";
 // (BnF via /api/cover, Open Library L/M, Google Books, Wikimedia Commons par titre).
 // Clic sur une vignette = sélection -> onPick(url).
 export default function CoverPicker({ isbn, titre, serie, onPick, onClose }) {
+  useBackClose(true, onClose);   // bouton « précédent » = fermer
   const [cands, setCands] = useState([]);   // {url, ok}
   const [status, setStatus] = useState("Recherche de couvertures…");
   const [manual, setManual] = useState("");

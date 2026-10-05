@@ -1,8 +1,10 @@
 import React, { useState } from "react";
+import { useBackClose } from "../lib/backButton.js";
 import { SUGG_TYPES } from "../lib/suggest.js";
 
 // Assistant de rangement : liste les propositions, par type, avec ✓ Appliquer / ✕ Ignorer.
 export default function RangementModal({ suggestions, onApply, onIgnore, onClose }) {
+  useBackClose(true, onClose);   // bouton « précédent » = fermer
   const [picked, setPicked] = useState({});   // key -> nom choisi / saisi
   const [tab, setTab] = useState("all");
   const [busy, setBusy] = useState(false);

@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from "react";
+import { useBackClose } from "../lib/backButton.js";
 import SerieInput from "./SerieInput.jsx";
 import { buildSeriesList } from "../lib/store.js";
 
 // Petite fenêtre « changer de série » ouverte depuis la vue Séries.
 export default function QuickSerieModal({ book, books, onSave, onOpenFull, onClose }) {
+  useBackClose(true, onClose);   // bouton « précédent » = fermer
   const [serie, setSerie] = useState(book.serie || "");
   const [tome, setTome] = useState(book.tome === "" || book.tome == null ? "" : String(book.tome));
   const seriesList = useMemo(() => buildSeriesList(books, book.id), [books, book.id]);

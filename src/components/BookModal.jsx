@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useBackClose } from "../lib/backButton.js";
 import { OWNED, STATUS_LABELS, amazonUrl, cleanIsbn, extractTome, buildSeriesList } from "../lib/store.js";
 import SerieInput from "./SerieInput.jsx";
 import { lookupByISBN, lookupByISBNRemote, searchCandidates } from "../lib/api.js";
@@ -7,6 +8,7 @@ import CoverPicker from "./CoverPicker.jsx";
 const EMPTY = { titre: "", serie: "", tome: "", auteur: "", editeur: "", annee: "", isbn: "", statut: "jai", note: 0, commentaire: "", cover: "", pages: "", format: "" };
 
 export default function BookModal({ id, books, refCatalog, onSave, onDelete, onClose }) {
+  useBackClose(true, onClose);   // bouton « précédent » = fermer
   const editing = id ? books.find(b => b.id === id) : null;
   const [f, setF] = useState(editing ? { ...EMPTY, ...editing } : EMPTY);
   const [sugg, setSugg] = useState([]);   // propositions par champ

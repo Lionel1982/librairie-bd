@@ -20,8 +20,15 @@ import Menu from "./components/Menu.jsx";
 import Toast from "./components/Toast.jsx";
 import RangementModal from "./components/RangementModal.jsx";
 import { buildSuggestions } from "./lib/suggest.js";
+import { getTheme, applyTheme } from "./lib/theme.js";
 
-const APP_VERSION = "3.18.0-supabase";
+const APP_VERSION = "3.19.0-supabase";
+
+// filtres de la Bibliothèque (statut, genre, sans couverture, éditeur)
+const DEFAULT_FILTERS = { statut: "owned", noCover: false, genre: "", editeur: "" };
+const STATUT_FILTERS = [["owned", "💚 Ma collection"], ["all", "📚 Tout"], ["jai", "J’ai"], ["lu", "Lu"], ["en-cours", "En cours"],
+  ["a-lire", "À lire"], ["veux", "💜 Je veux"], ["a-confirmer", "🟡 À trier"]];
+const STATUT_LABEL = Object.fromEntries(STATUT_FILTERS);
 
 export default function App() {
   const { session, user, loading: authLoading } = useSession();
@@ -41,14 +48,17 @@ function LibraryApp({ user }) {
   const [findOpen, setFindOpen] = useState(false);
   const [tinderOpen, setTinderOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [toolsMode, setToolsMode] = useState(null);     // null | "settings" | "ranger"
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [theme, setThemeState] = useState(getTheme());
+  function chooseTheme(k) { applyTheme(k); setThemeState(k); }
   const [scanOpen, setScanOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [scrolled, setScrolled] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortMode, setSortMode] = useState(() => { try { return localStorage.getItem("bdlib-sort") || "recent"; } catch { return "recent"; } });
   const [sortOpen, setSortOpen] = useState(false);
-  function chooseSort(m) { setSortMode(m); setSortOpen(false); try { localStorage.setItem("bdlib-sort", m); } catch {} }
+  function chooseSort(m) { setSortMode(m); try { localStorage.setItem("bdlib-sort", m); } catch {} }
   const [rangeOpen, setRangeOpen] = useState(false);
   const [ignoredSugg, setIgnoredSugg] = useState(() => { try { return new Set(JSON.parse(localStorage.getItem("bdlib-sugg-ignored") || "[]")); } catch { return new Set(); } });
   const [suggBannerOff, setSuggBannerOff] = useState(() => { try { return sessionStorage.getItem("bdlib-sugg-banner") === "off"; } catch { return false; } });
@@ -56,6 +66,14 @@ function LibraryApp({ user }) {
     setIgnoredSugg(s => { const n = new Set(s); n.add(key); try { localStorage.setItem("bdlib-sugg-ignored", JSON.stringify([...n])); } catch {} return n; });
   }
   const fileInputRef = useRef(null);
+
+  // raccourci (stats, ranger…) : ouvre une vue avec des filtres précis
+  function navigate(t) {
+    setFilters({ ...DEFAULT_FILTERS, ...((t && t.filters) || {}) });
+    setQuery((t && t.query) || ""); setFilterOpen(!!(t && t.query));
+    setViewMode((t && t.view) || "biblio"); setSortOpen(false);
+    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
+  }
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -66,10 +84,24 @@ function LibraryApp({ user }) {
   const notify = (m) => setToast(m);
   const pending = useMemo(() => books.filter(b => b.statut === "a-confirmer").length, [books]);
   // listes filtrées mémorisées (évite de tout recalculer à chaque rendu)
-  const ownedBooks = useMemo(() => books.filter(b => S.OWNED.includes(b.statut)), [books]);
   const wishBooks = useMemo(() => books.filter(b => b.statut === "veux"), [books]);
   const libBooks = useMemo(() => books.filter(S.inLibrary), [books]);
   const suggestions = useMemo(() => buildSuggestions(libBooks, ignoredSugg), [libBooks, ignoredSugg]);
+  const genreMap = useMemo(() => S.buildGenreMap(books), [books]);
+  const statutBase = useMemo(() => books.filter(b => filters.statut === "owned" ? S.OWNED.includes(b.statut)
+    : filters.statut === "all" ? true : b.statut === filters.statut), [books, filters.statut]);
+  const secondary = (list) => list.filter(b => (!filters.noCover || !b.cover)
+    && (!filters.genre || genreMap.get(b.id) === filters.genre)
+    && (!filters.editeur || (b.editeur || "").trim() === filters.editeur));
+  const biblioBooks = useMemo(() => secondary(statutBase), [statutBase, filters, genreMap]); // eslint-disable-line
+  const wishFiltered = useMemo(() => secondary(wishBooks), [wishBooks, filters, genreMap]); // eslint-disable-line
+  const noCoverCount = useMemo(() => (viewMode === "wishlist" ? wishBooks : statutBase).filter(b => !b.cover).length, [viewMode, wishBooks, statutBase]);
+  const noCoverAll = useMemo(() => books.filter(b => !b.cover).length, [books]);
+  const activeChips = [];
+  if (viewMode === "biblio" && filters.statut !== "owned") activeChips.push({ k: "s", label: STATUT_LABEL[filters.statut] || filters.statut, clear: () => setFilters(f => ({ ...f, statut: "owned" })) });
+  if (filters.genre) activeChips.push({ k: "g", label: S.GENRES[filters.genre].icon + " " + S.GENRES[filters.genre].label, clear: () => setFilters(f => ({ ...f, genre: "" })) });
+  if (filters.noCover) activeChips.push({ k: "c", label: "🖼️ Sans couverture", clear: () => setFilters(f => ({ ...f, noCover: false })) });
+  if (filters.editeur) activeChips.push({ k: "e", label: "🏢 " + filters.editeur, clear: () => setFilters(f => ({ ...f, editeur: "" })) });
 
   // Déclenchement auto de l'assistant de complétion au 1er lancement du mois (par utilisateur)
   useEffect(() => {
@@ -264,8 +296,8 @@ function LibraryApp({ user }) {
               <button className="hdr-menu-item" onClick={() => { exportJson(); close(); }}>⬇️ Exporter (JSON)</button>
               <button className="hdr-menu-item" onClick={() => { migrateFromLocalStorage(); close(); }}>⬆️ Migrer mes données locales</button>
               <div className="hdr-menu-sep" />
-              <button className="hdr-menu-item" onClick={() => { setRangeOpen(true); close(); }}>🧭 Ranger ma collection{suggestions.length ? " (" + suggestions.length + ")" : ""}</button>
-              <button className="hdr-menu-item" onClick={() => { setSettingsOpen(true); close(); }}>⚙️ Paramètres</button>
+              <button className="hdr-menu-item" onClick={() => { setToolsMode("ranger"); close(); }}>🧭 Ranger ma collection{suggestions.length ? " (" + suggestions.length + ")" : ""}</button>
+              <button className="hdr-menu-item" onClick={() => { setToolsMode("settings"); close(); }}>⚙️ Paramètres</button>
               <div className="hdr-menu-sep" />
               <button className="hdr-menu-item" onClick={() => { logout(); close(); }}>🚪 Se déconnecter</button>
               <div className="hdr-menu-sep" />
@@ -301,11 +333,29 @@ function LibraryApp({ user }) {
       </div>
 
       {sortOpen && (viewMode === "biblio" || viewMode === "wishlist") && (
-        <div className="sort-bar">
-          <span className="sort-bar-label">Trier par</span>
-          {Object.entries(S.SORT_LABELS).map(([k, l]) => (
-            <button key={k} className={"sort-chip" + (sortMode === k ? " active" : "")} onClick={() => chooseSort(k)}>{l}</button>
-          ))}
+        <div className="sort-bar opt-panel">
+          <div className="opt-row"><span className="sort-bar-label">Trier par</span>
+            {Object.entries(S.SORT_LABELS).map(([k, l]) => (
+              <button key={k} className={"sort-chip" + (sortMode === k ? " active" : "")} onClick={() => chooseSort(k)}>{l}</button>
+            ))}
+          </div>
+          {viewMode === "biblio" && (
+            <div className="opt-row"><span className="sort-bar-label">Statut</span>
+              {STATUT_FILTERS.map(([k, l]) => (
+                <button key={k} className={"sort-chip" + (filters.statut === k ? " active" : "")} onClick={() => setFilters(f => ({ ...f, statut: k }))}>{l}</button>
+              ))}
+            </div>
+          )}
+          <div className="opt-row"><span className="sort-bar-label">Genre</span>
+            <button className={"sort-chip" + (!filters.genre ? " active" : "")} onClick={() => setFilters(f => ({ ...f, genre: "" }))}>Tous</button>
+            {S.GENRE_KEYS.map(k => (
+              <button key={k} className={"sort-chip" + (filters.genre === k ? " active" : "")} onClick={() => setFilters(f => ({ ...f, genre: f.genre === k ? "" : k }))}>{S.GENRES[k].icon} {S.GENRES[k].label}</button>
+            ))}
+          </div>
+          <div className="opt-row"><span className="sort-bar-label">Afficher</span>
+            <button className={"sort-chip" + (filters.noCover ? " active" : "")} onClick={() => setFilters(f => ({ ...f, noCover: !f.noCover }))}>🖼️ Sans couverture ({noCoverCount})</button>
+            <button className="sort-chip" onClick={() => setSortOpen(false)}>✓ Fermer</button>
+          </div>
         </div>
       )}
 
@@ -318,6 +368,16 @@ function LibraryApp({ user }) {
         </div>
       )}
 
+      {(viewMode === "biblio" || viewMode === "wishlist") && activeChips.length > 0 && (
+        <div className="active-filters">
+          <span className="af-label">Filtres :</span>
+          {activeChips.map(c => <button key={c.k} className="af-chip" onClick={c.clear}>{c.label} ✕</button>)}
+          <span className="af-count">{(viewMode === "wishlist" ? wishFiltered : biblioBooks).length} album(s)</span>
+          <button className="af-reset" onClick={() => setFilters(DEFAULT_FILTERS)}>Tout effacer</button>
+          {filters.noCover && <div className="af-hint">Clique sur un album puis sur son image pour lui choisir une couverture.</div>}
+        </div>
+      )}
+
       {suggestions.length > 0 && !suggBannerOff && (viewMode === "biblio" || viewMode === "series") && (
         <div className="sugg-banner">
           <span>🧭 <b>{suggestions.length}</b> proposition(s) de rangement (doublons, séries, tomes, genres)</span>
@@ -327,14 +387,14 @@ function LibraryApp({ user }) {
       )}
 
       <main className="library">
-        {viewMode === "biblio" && <LibraryGrid books={ownedBooks} query={query} onOpen={setEditingId} sort={sortMode} />}
-        {viewMode === "wishlist" && <LibraryGrid books={wishBooks} query={query} onOpen={setEditingId} wishlist sort={sortMode} />}
+        {viewMode === "biblio" && <LibraryGrid books={biblioBooks} query={query} onOpen={setEditingId} sort={sortMode} emptyText={activeChips.length ? "Aucun album ne correspond à ces filtres." : ""} />}
+        {viewMode === "wishlist" && <LibraryGrid books={wishFiltered} query={query} onOpen={setEditingId} wishlist sort={sortMode} emptyText={activeChips.length ? "Aucun souhait ne correspond à ces filtres." : ""} />}
         {viewMode === "series" && <SeriesView books={libBooks} seriesMeta={seriesMeta} onSetSerieMeta={(key, meta) => lib.setSerieMeta(key, meta)} query={query} blacklist={blacklist} onOpen={setEditingId}
           onOpenRangement={() => setRangeOpen(true)} suggCount={suggestions.length}
           onEditBook={(id, patch) => lib.editBook(id, patch).then(() => notify("🗂️ Série mise à jour")).catch(e => notify("❌ Non enregistré : " + (e?.message || "erreur")))} />}
         {viewMode === "etagere" && <ShelfView books={libBooks} query={query} onOpen={setEditingId} />}
         {viewMode === "trous" && <GapsView books={libBooks} seriesMeta={seriesMeta} query={query} blacklist={blacklist} onAddWish={addGapWish} onBlacklistSerie={blSerie} onBlacklistAlbum={blAlbum} />}
-        {viewMode === "stats" && <StatsView books={libBooks} seriesMeta={seriesMeta} />}
+        {viewMode === "stats" && <StatsView books={libBooks} seriesMeta={seriesMeta} onNavigate={navigate} />}
       </main>
 
       {editingId !== undefined && (
@@ -361,12 +421,16 @@ function LibraryApp({ user }) {
       {scanOpen && (
         <Scanner onAddMany={addScannedMany} refCatalog={refCatalog} onClose={() => setScanOpen(false)} />
       )}
-      {settingsOpen && (
-        <SettingsModal blacklist={blacklist} books={books} refCatalog={refCatalog} onRestore={restoreMissing} onFetchPages={lib.fetchPagesFormat}
+      {toolsMode && (
+        <SettingsModal mode={toolsMode} theme={theme} onTheme={chooseTheme}
+          suggCount={suggestions.length} noCoverCount={noCoverAll}
+          onOpenSuggestions={() => { setToolsMode(null); setRangeOpen(true); }}
+          onShowNoCover={() => { setToolsMode(null); navigate({ view: "biblio", filters: { statut: "all", noCover: true } }); }}
+          blacklist={blacklist} books={books} refCatalog={refCatalog} onRestore={restoreMissing} onFetchPages={lib.fetchPagesFormat}
           onUnblacklistSerie={unblSerie} onUnblacklistAlbum={unblAlbum}
           onRefreshCovers={lib.refreshCoversBnF}
           onCleanupJunk={lib.cleanupJunk}
-          onClose={() => setSettingsOpen(false)} />
+          onClose={() => setToolsMode(null)} />
       )}
       {rangeOpen && (
         <RangementModal suggestions={suggestions} onApply={applyChanges} onIgnore={ignoreSugg} onClose={() => setRangeOpen(false)} />

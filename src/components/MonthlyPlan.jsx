@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from "react";
+import { useBackClose } from "../lib/backButton.js";
 import { OWNED, normTitle, isSerieBlacklisted, isAlbumBlacklisted } from "../lib/store.js";
 import { IconOneTome, IconManyTomes } from "./BlockIcons.jsx";
 
 // Assistant de complétion mensuelle : budget + stratégie "séries presque finies d’abord"
 export default function MonthlyPlan({ books, seriesMeta, blacklist, onClose, onAddWish, onBlacklistSerie, onBlacklistAlbum }) {
+  useBackClose(true, onClose);   // bouton « précédent » = fermer
   const [budget, setBudget] = useState(() => {
     const saved = Number(localStorage.getItem("bd-library-budget-v1"));
     return saved > 0 ? saved : 30;

@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import { useBackClose } from "../lib/backButton.js";
 import { uid, extractTome, getScanDirect, setScanDirect } from "../lib/store.js";
 import { searchCandidates } from "../lib/api.js";
 import SmartThumb from "./SmartThumb.jsx";
 
 export default function FindModal({ books, refCatalog, onAdd, onScan, onClose }) {
+  useBackClose(true, onClose);   // bouton « précédent » = fermer
   const [q, setQ] = useState("");
   const [results, setResults] = useState([]);
   const [checked, setChecked] = useState(new Set());
